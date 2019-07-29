@@ -24,6 +24,7 @@
   "poison": {:hex, :poison, "2.2.0", "4763b69a8a77bd77d26f477d196428b741261a761257ff1cf92753a0d4d24a63", [:mix], [], "hexpm"},
   "poolboy": {:hex, :poolboy, "1.5.2", "392b007a1693a64540cead79830443abf5762f5d30cf50bc95cb2c1aaafa006b", [:rebar3], [], "hexpm"},
   "ranch": {:hex, :ranch, "1.7.1", "6b1fab51b49196860b733a49c07604465a47bdb78aa10c1c16a3d199f7f8c881", [:rebar3], [], "hexpm"},
+  "short_maps": {:git, "https://github.com/whatyouhide/short_maps.git", "75a6add219add8f0404e5b75dfdb88b0c8bf1af7", []},
   "ssl_verify_fun": {:git, "https://github.com/deadtrickster/ssl_verify_fun.erl", "c5718226b0b9f3d1a38ef6ca3c3b4c75f53dda92", [tag: "1.1.4"]},
   "telemetry": {:hex, :telemetry, "0.4.0", "8339bee3fa8b91cb84d14c2935f8ecf399ccd87301ad6da6b71c09553834b2ab", [:rebar3], [], "hexpm"},
   "unicode_util_compat": {:git, "https://github.com/benoitc/unicode_util_compat.git", "38d7bc105f51159e8ea3279c40121db9db1e652f", [tag: "0.3.1"]},

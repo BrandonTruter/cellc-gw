@@ -89,5 +89,9 @@ defmodule TenbewGw.Model.Subscription do
     e -> IO.puts "set_validated/1 ERROR: #{inspect(e)}"
   end
 
+  def get_first_subscription() do
+    Subscription |> Repo.all() |> List.first()
+  end
+
 
 end

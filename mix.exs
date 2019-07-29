@@ -32,7 +32,8 @@ defmodule TenbewGw.MixProject do
       {:myxql, "~> 0.2.0",  github: "elixir-ecto/myxql", override: true},
       {:db_connection, "~> 2.0",  github: "elixir-ecto/db_connection", override: true},
       {:jason, "~> 1.0"},
-      {:hackney, github: "benoitc/hackney", override: true}
+      {:hackney, github: "benoitc/hackney", override: true},
+      {:short_maps, github: "whatyouhide/short_maps"}
     ]
   end
 end

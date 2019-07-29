@@ -1,0 +1,2 @@
+2019-07-29 14:52:57} %{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: m\", token: \"m\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}
+2019-07-29 14:53:31} %{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: #\", token: \"#\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}

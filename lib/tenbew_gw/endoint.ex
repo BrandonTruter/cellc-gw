@@ -4,6 +4,8 @@ defmodule TenbewGw.Endpoint do
   use Plug.ErrorHandler
   import Plug.Conn
   import Util.Log
+  import Util.WebRequest
+  import ShortMaps
 
   alias TenbewGw.Router
   alias Plug.{Adapters.Cowboy2, HTML}
@@ -16,7 +18,7 @@ defmodule TenbewGw.Endpoint do
 
   plug(Plug.Parsers,
     parsers: [:urlencoded, :json],
-    pass: ["application/json"],
+    pass: ["application/json", "application/octet-stream"],
     json_decoder: Poison # Jason
   )
 
@@ -38,14 +40,44 @@ defmodule TenbewGw.Endpoint do
     end
   end
 
-  forward("/home", to: Router)
 
-  # match _ do
-  #   conn
-  #   |> put_resp_header("location", redirect_url())
-  #   |> put_resp_content_type("text/html")
-  #   |> send_resp(302, redirect_body())
-  # end
+  defmacro r_json(j) do
+    quote do
+      encoded =
+        case Poison.encode(unquote(j)) do
+          {:ok, value} ->
+            value
+
+          val ->
+            "#{inspect(val)}" |> color_info(:yellow)
+            "Problem encoding json" |> color_info(:lightred)
+            %{} |> Poison.encode!()
+        end
+
+      status = 200
+
+      conn
+      |> var!()
+      |> put_resp_content_type("application/json")
+      |> send_resp(status, encoded)
+    end
+  end
+
+  get "/" do
+    "/" |> color_info(:lightblue)
+    message = "welcome to gateway"
+    response_type = "default"
+    r_json(~m(message response_type))
+  end
+
+  get "/home" do
+    "/home" |> color_info(:lightblue)
+    text = "welcome to our gateway :)"
+    response_type = "default"
+    r_json(~m(text response_type))
+  end
+
+  # forward("/home", to: Router)
 
   match _ do
     rp = conn.request_path
@@ -63,6 +95,7 @@ defmodule TenbewGw.Endpoint do
         "GET" ->
           case route do
             "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
+            "/api/foo" -> {__MODULE__, :local_foo, nil}
             _ -> nil
           end
 
@@ -79,10 +112,13 @@ defmodule TenbewGw.Endpoint do
 
     if is_nil(route_match) do
       "NOT FOUND" |> color_info(:red)
+      # conn
+      # |> put_resp_header("location", redirect_url())
+      # |> put_resp_content_type("text/html")
+      # |> send_resp(302, redirect_body())
       conn
       |> put_resp_content_type(@content_type)
       |> send_resp(404, error_message())
-      # |> send_resp(404, "NOT FOUND")
     else
       {module, func, auth} = route_match
 
@@ -90,8 +126,18 @@ defmodule TenbewGw.Endpoint do
     end
   end
 
+  def local_foo(conn, _opts) do
+    ~m(var1 var2) = req_query_params(conn)
+    r_json(~m(var1 var2))
+  rescue
+    e ->
+      "#{inspect(e)}" |> color_info(:red)
+      error(conn, "must use var1 and var2")
+  end
+
+
   def get_subscription(conn, _opts) do
-    "get_subscription/2" |> color_info(:yellow)
+    "get_subscription/2" |> color_info(:lightblue)
     params = req_query_params(conn)
 
     if params["msisdn"] do
@@ -185,8 +231,24 @@ defmodule TenbewGw.Endpoint do
 
   def req_body_map(conn) do
     case Plug.Conn.read_body(conn, length: 1_000_000) do
-      {:ok, value, conn} -> conn.body_params
-      _ -> %{}
+      {:ok, value, c} ->
+        if value == "" do
+          "value empty from read_body" |> color_info(:yellow)
+          c.body_params
+          # %{}
+        else
+          case Poison.decode(value) do
+            {:ok, val} ->
+              val
+
+            value ->
+              "Poison decode is #{inspect(value)}" |> color_info(:yellow)
+              %{}
+          end
+        end
+
+      _ ->
+        %{}
     end
   end
 
@@ -207,11 +269,99 @@ defmodule TenbewGw.Endpoint do
   def handle_errors(%{status: status} = conn, %{kind: _kind, reason: _reason, stack: _stack}),
     do: send_resp(conn, status, "Something went wrong")
 
+  def error(conn, error, error_number \\ 403) do
+    send_resp(conn, error_number, error)
+  end
+
   defp error_message do
     Poison.encode!(%{
       response_type: "error",
       text: "requested endpoint not available"
     })
   end
+
+  # def function_name do
+  #   |> Map.merge(pp_credentials())
+  #   |> URI.encode_query()
+  #
+  #   base_url = get_from_env_or_config(:pp_base_url)
+  #   base_url <> "v1/checkouts/#{checkout_id}/#{value}?" <> cred_to_querystring()
+  # end
+  #
+  # def pp_credentials() do
+  #   %{
+  #     "authentication.entityId": get_from_env_or_config(:pp_entity_id),
+  #     "authentication.password": get_from_env_or_config(:pp_password),
+  #     "authentication.userId": get_from_env_or_config(:pp_user_id)
+  #   }
+  # end
+  #
+  # def cred_to_querystring() do
+  #   #map = pp_credentials() |> URI.encode_query
+  #   pp_credentials() |> URI.encode_query
+  #   #Enum.map(Map.keys(map), fn x -> Atom.to_string(x) <> "=#{Map.get(map, x)}" end) |> Enum.join("&")
+  # end
+
+
+  # def call_qq_api do
+  #
+  #
+  #   response =
+  #     case WebRequest.request(url_by_type(type, checkout_id), method_by_type(type), headers_by_type(type), body, timeout) do
+  #       {200, response} -> response
+  #       val ->
+  #         emsg = "Response from peach (bad) was #{inspect val}"
+  #         emsg |> color_info(:red)
+  #         generate_ticket(:peach_request_error, emsg, map)
+  #         raise PaymentError, message: {checkout_id, "Payment Processor response was invalid"}
+  #     end
+  #
+  # end
+
+  # def call_rain_pg_old(checkout, map) do
+  #   timeout = 60
+  #   url = "http://localhost:9999/fake"  # Endpoint Url of rain_pg, use a mock in the meantime
+  #   method = "POST"
+  #   headers = []
+  #   details = map["details"]
+  #   body =
+  #     %{
+  #       id_number: details["user_id_no"],
+  #       bank_acc_no: details["bank_acc_no"],
+  #       branch_code: details["branch_code"],
+  #       account_holder: details["account_holder"],
+  #       request_reference: Ecto.UUID.generate()
+  #     }
+  #   DebitOrderCheckout.set_history_message(checkout, "Pending Validation")
+  #   {what, response} =
+  #     case WebRequest.request(url, method, headers, body, timeout) do
+  #       {200, response} -> {:ok, response}
+  #       {status, response} ->
+  #         emsg = "Response from rain_pg (bad).  Status: #{status}.  Message: #{inspect response}"
+  #         emsg |> color_info(:red)
+  #         response =
+  #           case response do
+  #             "request timeout" -> "No response from RAIN PG"
+  #             _ -> response
+  #           end
+  #         {:bad, "invalid - #{response}"}
+  #       _val ->
+  #         {:bad, "invalid – No response from RAIN PG"}
+  #     end
+  #   message = "validated"
+  #   if what == :ok do
+  #     m =
+  #       case response.status do
+  #         "validated" -> message
+  #         _ -> response.message
+  #       end
+  #     update_request_and_response_at_debit_order_checkout(checkout, body, response, m)
+  #   else
+  #     update_request_and_response_at_debit_order_checkout(checkout, body, %{}, response)
+  #   end
+  #   :ok
+  # rescue
+  #   e -> "call_rain_pg/2 error : #{inspect e}" |> color_info(:red)
+  # end
 
 end
