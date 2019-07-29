@@ -35,4 +35,6 @@ config :tenbew_gw, ecto_repos: [TenbewGw.Repo]
 config :tenbew_gw, TenbewGw.Endpoint, port: 4000
 config :tenbew_gw, redirect_url: "http://localhost:4000/"
 
+config :tenbew_gw, error_loggers: [:screen, :file_logger]
+
 import_config "#{Mix.env()}.exs"

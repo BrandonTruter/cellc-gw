@@ -3,6 +3,7 @@ defmodule TenbewGw.Endpoint do
   use Plug.Debugger
   use Plug.ErrorHandler
   import Plug.Conn
+  import Util.Log
 
   alias TenbewGw.Router
   alias Plug.{Adapters.Cowboy2, HTML}
@@ -37,7 +38,7 @@ defmodule TenbewGw.Endpoint do
     end
   end
 
-  forward("/", to: Router)
+  forward("/home", to: Router)
 
   # match _ do
   #   conn
@@ -61,12 +62,13 @@ defmodule TenbewGw.Endpoint do
       case conn.method do
         "GET" ->
           case route do
-            "/get_subscription" -> {__MODULE__, :get_subscription, nil}
+            "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
             _ -> nil
           end
 
         "POST" ->
           case route do
+            # "/add_subscriber" -> {__MODULE__, :add_subscriber, nil}
             "/add_subscriber" -> {__MODULE__, :add_subscriber, ["general"]}
             _ -> nil
           end
@@ -76,10 +78,11 @@ defmodule TenbewGw.Endpoint do
       end
 
     if is_nil(route_match) do
-      Logger.info("NOT FOUND")
-
+      "NOT FOUND" |> color_info(:red)
       conn
-      |> send_resp(404, "NOT FOUND")
+      |> put_resp_content_type(@content_type)
+      |> send_resp(404, error_message())
+      # |> send_resp(404, "NOT FOUND")
     else
       {module, func, auth} = route_match
 
@@ -88,7 +91,7 @@ defmodule TenbewGw.Endpoint do
   end
 
   def get_subscription(conn, _opts) do
-    Logger.info("get_subscription/2")
+    "get_subscription/2" |> color_info(:yellow)
     params = req_query_params(conn)
 
     if params["msisdn"] do
@@ -122,23 +125,24 @@ defmodule TenbewGw.Endpoint do
   end
 
   defp create_subscription(msisdn) do
-    Logger.info("create_subscription/1")
+    "create_subscription/1 :: #{inspect(msisdn)}" |> color_info(:yellow)
     attrs = %{ msisdn: "#{msisdn}", status: "pending" }
 
     case Subscription.create_subscription(attrs) do
       {:ok, subscription} ->
-        IO.inspect(subscription)
+        "Subscription created successfully: #{inspect(subscription)}" |> color_info(:green)
 
       {:error, error} ->
-        IO.inspect(error)
+        "Error creating subscription: #{inspect(error)}" |> color_info(:red)
 
-      _ ->
-        IO.puts("error creating subscription")
+      _ -> "Error creating subscription" |> color_info(:red)
     end
+  rescue e ->
+    "create_subscription/1 exception: #{inspect e}" |> color_info(:red)
   end
 
   def add_subscriber(conn, _opts) do
-    Logger.info("add_subscriber/2")
+    "add_subscriber/2" |> color_info(:yellow)
     map = req_body_map(conn)
     response_message = %{
       response_type: "creation started",
@@ -202,4 +206,12 @@ defmodule TenbewGw.Endpoint do
 
   def handle_errors(%{status: status} = conn, %{kind: _kind, reason: _reason, stack: _stack}),
     do: send_resp(conn, status, "Something went wrong")
+
+  defp error_message do
+    Poison.encode!(%{
+      response_type: "error",
+      text: "requested endpoint not available"
+    })
+  end
+
 end
