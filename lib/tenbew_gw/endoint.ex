@@ -181,60 +181,82 @@ defmodule TenbewGw.Endpoint do
   defp config, do: Application.fetch_env(:tenbew_gw, __MODULE__)
   defp redirect_url, do: Application.get_env(:tenbew_gw, :redirect_url)
 
-
-  # def handle_errors(conn, status, message) do
-  #   msg = Poison.encode!(%{error: "#{message}"})
-  #   send_resp(conn, status, msg)
-  # end
-
   def handle_errors(%{status: status} = conn, %{kind: _kind, reason: _reason, stack: _stack}),
     do: send_resp(conn, status, "Something went wrong")
 
-  # def error(conn, error, error_number \\ 403), do: send_resp(conn, error_number, error)
+  def render_error(%{status: status} = conn) do
+    message = error_message(status)
+    err_msg = Poison.encode!(%{error: message})
+    "render_error/1, code: #{status}, message: #{inspect(message)}" |> color_info(:red)
+    send_resp(conn, status, "#{err_msg}")
+  end
 
-  # def render_error(%{status: status} = conn, %{kind: _kind, reason: _reason, stack: _stack}) do
-  #   message = error_message(status)
-  #   err_msg = Poison.encode!(%{error: message})
-  #   "render_error/1, code: #{status}, message: #{inspect(message)}" |> color_info(:red)
-  #   send_resp(conn, status, "#{err_msg}")
-  # end
+  def error(conn, error, error_number \\ 403), do: send_resp(conn, error_number, error)
 
 
   # STEP 1 - Receive add subscriber request
-  def validate_parameters(map) when is_map(map) do
+  def valid_parameters(map) when is_map(map) do
     # The request will originate from the Cell C QQ portal for a new subscriber. QQ will call addSub function with the MSISDN and other parameters that will determine the request routing
     keys = ~w(waspTID serviceID msisdn mn)
 
     Enum.all?(keys, fn x -> Map.get(map, x) != nil end)
   end
-
-  def validate_parameters(_) , do: false
-  # def validate_parameters(_, _) , do: false
+  def valid_parameters(_, _) , do: false
 
   # STEP 2 - Conduct basic MSISDN Validation
-  def validate_msisdn_format(msisdn) do
+  def valid_msisdn_format(msisdn) do
     # The basic validation required here is to determine that the MSISDN is 11 digits long starting with 27, only numeric
-    true
+    case msisdn do
+      val when val in [nil, ""] -> false
+      val when is_number(val) ->
+        val = val |> Integer.to_string()
+        case Integer.parse(val) do
+          {_, ""} -> true
+          _  -> false
+        end
+        |> Kernel.and( String.starts_with?(val, "27") and String.length(val) == 11 )
+      val when is_binary(val) ->
+        case Integer.parse(msisdn) do
+          {_, ""} -> true
+          _  -> false
+        end
+        |> Kernel.and(
+          String.starts_with?(val, "27") and String.length(val) == 11
+        )
+    end
   rescue e ->
-    "validate_msisdn_format/1 exception : #{inspect e}" |> color_info(:red)
+    "valid_msisdn_format/1 exception : #{inspect e}" |> color_info(:red)
     false
   end
-
 
   # STEP 3 - Check if the MSISDN is already Subscribed
-  def validate_msisdn_existance(msisdn) do
+  def valid_msisdn_existance(msisdn) do
     # This processes queries Tenbew database to see if the MSISDN is registered in the subscriber database and listed as either pending or active
-    true
+    if Subscription.exists?(msisdn) do
+      case Subscription.get_status(msisdn) do
+        "pending" -> true
+        "active" -> false
+        _ -> false
+      end
+    else
+      true
+    end
   rescue e ->
-    "validate_msisdn_existance/1 exception : #{inspect e}" |> color_info(:red)
+    "valid_msisdn_existance/1 exception : #{inspect e}" |> color_info(:red)
     false
   end
-
 
   # STEP 4 - Call up Cell C DOI Service
   def call_cell_c(map) do
     # The DOI service (double opt in) is a legal requirement. It allows the subscriber to confirm that they have indeed made the decision to subscriber. When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
     # If the MSISDN is valid, Cell C returns a message that the subscriber is pending. Otherwise may reject the request because the subscriber is either not a Cell C subscriber or other reasons.
+
+    serialized_map = %{
+      "msisdn" => Map.get(map, "msisdn", ""),
+      "waspTID" => Map.get(map, "waspTID", ""),
+      "serviceID" => Map.get(map, "serviceID", ""),
+      "mn" => Map.get(map, "mn", "")
+    } |> Jason.encode!
 
 
   rescue e ->
@@ -255,57 +277,98 @@ defmodule TenbewGw.Endpoint do
   def addsub(conn, opts) do
     # 1. Add Subscriber - This happens when a subscriber through QQ portal ask to subscribe for service(s). QQ portal calls Tenbew gateway for downstream processing
     # if is_nil(opts), do: raise AuthorizationError, message: "Authorization error"
-    "POST /addsub" |> color_info(:yellow)
     map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    "POST /addsub :: msisdn: #{msisdn}" |> color_info(:yellow)
 
-    valid? =
-      if validate_parameters(map) do
-        msisdn = Map.get(map, "msisdn", "")
-        if validate_msisdn_format(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-        if validate_msisdn_existance(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-      else
-        map = req_body_map(conn)
-
-        if validate_parameters(map) do
-          msisdn = map |> Map.get("msisdn")
-
-          if validate_msisdn_format(msisdn) do
-            if validate_msisdn_existance(msisdn) do
-              true
-            else
-              raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-            end
-          else
-            raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-          end
-        else
-          raise ValidationError, message: "invalid params, missing details", status: 500
-        end
-      end
-
-    if valid? do
-      serialized_map = %{
-        "msisdn" => Map.get(map, "msisdn", ""),
-        "waspTID" => Map.get(map, "waspTID", ""),
-        "serviceID" => Map.get(map, "serviceID", ""),
-        "mn" => Map.get(map, "mn", "")
-      } |> Jason.encode!
-
-      response = call_cell_c(serialized_map)
-
-      if response["status"] == "pending" do
-        update_subscription_details(response)
-
-        conn
-        |> put_resp_content_type(@content_type)
-        |> send_resp(200, response)
-      else
-        raise ApiError, message: response["error"]
-      end
-    else
-      raise ValidationError, message: "invalid msisdn", status: 502
-      # render_error(conn, 501)
+    # Step 1
+    unless valid_parameters(map) do
+      raise ValidationError, message: "invalid params, missing details", status: 500
     end
+    # Step 2
+    unless valid_msisdn_format(msisdn) do
+      raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+    end
+    # Step 3
+    unless valid_msisdn_existance(msisdn) do
+      raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    end
+    # Step 4
+    response = call_cell_c(map)
+    unless response["status"] == "pending" do
+      raise ApiError, message: response["error"]
+    end
+    # Step 5
+    update_subscription_details(response)
+
+    response_message = response["message"]
+
+    # valid? =
+    #   if validate_parameters(map) do
+    #     msisdn = Map.get(map, "msisdn", "")
+    #     if validate_msisdn_format(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+    #     if validate_msisdn_existance(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    #   else
+    #     map = req_body_map(conn)
+    #
+    #     if validate_parameters(map) do
+    #       msisdn = map |> Map.get("msisdn")
+    #
+    #       if validate_msisdn_format(msisdn) do
+    #         if validate_msisdn_existance(msisdn) do
+    #           true
+    #         else
+    #           raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    #         end
+    #       else
+    #         raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+    #       end
+    #     else
+    #       raise ValidationError, message: "invalid params, missing details", status: 500
+    #     end
+    #   end
+
+    # validated =
+    #   if validate_parameters(map) do
+    #     if validate_msisdn_format(msisdn) do
+    #       if validate_msisdn_existance(msisdn) do
+    #         true
+    #       else
+    #         raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    #       end
+    #     else
+    #       raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+    #     end
+    #   else
+    #     raise ValidationError, message: "invalid params, missing details", status: 500
+    #   end
+
+    # if valid? do
+    #   serialized_map = %{
+    #     "msisdn" => Map.get(map, "msisdn", ""),
+    #     "waspTID" => Map.get(map, "waspTID", ""),
+    #     "serviceID" => Map.get(map, "serviceID", ""),
+    #     "mn" => Map.get(map, "mn", "")
+    #   } |> Jason.encode!
+    #
+    #   response = call_cell_c(serialized_map)
+    #
+    #   if response["status"] == "pending" do
+    #     update_subscription_details(response)
+    #
+    #     conn
+    #     |> put_resp_content_type(@content_type)
+    #     |> send_resp(200, response)
+    #   else
+    #     raise ApiError, message: response["error"]
+    #   end
+    # else
+    #   raise ValidationError, message: "invalid msisdn", status: 502
+    # end
+
+    conn
+    |> put_resp_content_type(@content_type)
+    |> send_resp(200, response_message)
 
   rescue
     # e in AuthorizationError ->
