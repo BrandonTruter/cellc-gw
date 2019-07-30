@@ -75,7 +75,6 @@ defmodule Util.WebRequest do
     end
   end
 
-
   def test() do
     case request("http://localhost:4000/#{@base_api}/get_subscription?msisdn=0712363482", :get, [], "", 5) do
       {200, body} -> body

@@ -1,2 +1,5 @@
 2019-07-29 14:52:57} %{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: m\", token: \"m\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}
 2019-07-29 14:53:31} %{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: #\", token: \"#\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}
+2019-07-29 20:25:10} %{arity: 5, error: "%MatchError{term: {:error, :econnrefused}}", file: "lib/util/request.ex", function: "request", line: 40, module: "Elixir.Util.WebRequest"}
+2019-07-29 20:25:37} %{arity: 5, error: "%MatchError{term: {:error, :econnrefused}}", file: "lib/util/request.ex", function: "request", line: 40, module: "Elixir.Util.WebRequest"}
+2019-07-30 06:49:39} %{arity: 5, error: "%MatchError{term: {:error, :econnrefused}}", file: "lib/util/request.ex", function: "request", line: 40, module: "Elixir.Util.WebRequest"}
