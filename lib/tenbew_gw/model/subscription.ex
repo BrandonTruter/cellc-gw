@@ -32,6 +32,12 @@ defmodule TenbewGw.Model.Subscription do
   end
 
   @doc false
+  def status_changeset(%Subscription{} = subscription, attrs) do
+    subscription
+    |> cast(attrs, [:status])
+    |> validate_required([:status])
+  end
+
   def validated_changeset(%Subscription{} = subscription, attrs) do
     subscription
     |> cast(attrs, [:validated])
@@ -42,6 +48,12 @@ defmodule TenbewGw.Model.Subscription do
     %Subscription{}
       |> create_changeset(attrs)
       |> Repo.insert
+  end
+
+  def set_status(%Subscription{} = subscription, attrs) do
+    subscription
+      |> status_changeset(attrs)
+      |> Repo.update()
   end
 
   def get!(id), do: Repo.get!(Subscription, id)
@@ -92,6 +104,5 @@ defmodule TenbewGw.Model.Subscription do
   def get_first_subscription() do
     Subscription |> Repo.all() |> List.first()
   end
-
 
 end
