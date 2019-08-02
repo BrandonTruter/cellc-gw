@@ -18,6 +18,8 @@ case Mix.env() do
     config :tenbew_gw, redirect_url: "http://doi-test.cmobile.co.za/" # Pre-production (PPD)
 end
 
+config :tenbew_gw, doi_api_url: "http://localhost:3000/api/v1"
+
 config :tenbew_gw, error_loggers: [:screen, :file_logger]
 
 config :tenbew_gw, base_api: "api/v1"

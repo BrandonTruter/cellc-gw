@@ -15,35 +15,166 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/tenbew_gw](https://hexdocs.pm/tenbew_gw).
+## Getting Started
 
-## Usage
+### Dependencies
 
-1. Run Server
+  * Make sure you have `Elixir` installed. You need to grab two libs:
+
+    Erlang >= 19.3
+    Elixir >= 1.6.4
+
+### Development
+
+  * Clone the project with `git clone git@bitbucket.org:brandonleetruter/tenbew_gw.git`
+  * Install and compile dependencies with `mix do deps.get, deps.compile, compile`
+  * Create and migrate database with `mix ecto.create && mix ecto.migrate`
+  * Start Server with `mix run --no-halt`
+
+  Now we can response to API requests on [`localhost:4000`](http://localhost:4000)
+
+### Usage
+
+ Following contains general example of API requests demonstrated via CURL:
+
+ API calls can also be called under the `api/v1/` namespace
+
+#### Primary / Validation Endpoint
+
+**addsub**
+
+● GET /api/v1/addsub.php?waspTID=QQChina&serviceID=00&mn=CellC_ZA
 
 ```bash
-$ mix run --no-halt
+$ curl --request GET \
+       --url 'http://localhost:4000/addsub.php?waspTID=ABCD&serviceID=123&mn=CellC' \
+       --header 'Content-Type: application/json'
 ```
 
-This starts the server at: http://localhost:4000/
+1. Response: `Parameter` Validation
 
-2. Call API
+``` http
+{
+  "status": 500,
+  "message": "invalid params, missing details"
+}
+```
 
-Example of GET request:
+2. Response: MSISDN `Format` Validation
+
+``` http
+{
+  "status": 501,
+  "message": "invalid msisdn, incorrect format"
+}
+```
+
+3. Response: MSISDN `Existence` & `Status` Validation
+
+``` http
+{
+  "status": 502,
+  "message": "invalid msisdn, already subscribed"
+}
+```
+
+#### Other Endpoints
+
+**add_subscription**
+
+● POST /api/v1/add_subscription
 
 ```shell
-$ curl "http://localhost:4000/get_subscription?msisdn=0753246218" -H 'Content-Type: application/json'
+$ curl -POST -H 'Content-Type: application/json' -d '{"msisdn":"0724444444"}' http://localhost:4000/api/v1/add_subscription
 ```
 
-Example of POST request:
+``` http
+{
+  "type": "creation success",
+  "message": "Created subscription with MSISDN 0724444444, ref: 2fc861a5-6f1f-4245-9aa8-d4c1c2d88a5c"
+}
+```
+
+**get_subscription**
+
+● GET /api/v1/get_subscription?msisdn=0724567890
 
 ```shell
-$ curl --request POST \
-  --url 'http://localhost:4000/api/v1/add_subscriber' \
-  --header 'Content-Type: application/json; charset=utf-8' \
-  --data $'{ "msisdn": "0724244223" }'
+$ curl "http://localhost:4000/get_subscription?msisdn=0724567890" -H 'Content-Type: application/json'
 ```
 
-API calls can also be called under the `api/v1/` namespace
+``` http
+{
+  "type": "retrieved subscription",
+  "message": "MSISDN 0724567890 found, status is: pending"
+}
+```
+
+**doi/subscriptions**
+
+● POST /api/v1/add_subscription
+
+```shell
+☺ curl "http://localhost:4000/doi/subscriptions" -H 'Content-Type: application/json'
+```
+
+``` http
+[
+  {"state":"active","service":"none","reference":"test","msisdn":"27124247232","message":"first subscription","id":1,"api_key":null},
+  {"state":"pending","service":"none","reference":"test","msisdn":"27121117232","message":"second subscription","id":2,"api_key":"qa2esYpIiY3z8GuDjzJETgtt"}
+]
+```
+
+**other**
+
+● GET /
+
+```shell
+$ curl "http://localhost:4000/" -H 'Content-Type: application/json'
+```
+
+``` http
+  <html><body>You are being <a href="http://localhost:4000/">redirected</a>.</body></html>
+```
+
+
+● GET /api/v1
+
+```shell
+$ curl "http://localhost:4000/api/v1" -H 'Content-Type: application/json'
+```
+
+``` http
+  {"type":"default","message":"welcome to tenbew gateway"}
+```
+
+
+● GET /anything_else
+
+```shell
+$ curl "http://localhost:4000/anything_else" -H 'Content-Type: application/json'
+```
+
+``` http
+  {"type":"error","message":"requested endpoint not available"}
+```
+
+### Tests
+
+Only basic tests available, which simulate API endpoints above, see output and logs
+
+```bash
+  $ iex -S mix
+```
+
+```elixir
+  alias Util.WebRequest
+
+  WebRequest.test()
+
+  WebRequest.test2()
+
+  WebRequest.test3()
+
+  WebRequest.test4()
+```

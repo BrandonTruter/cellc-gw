@@ -108,6 +108,7 @@ defmodule TenbewGw.Endpoint do
           case route do
             "/addsub.php" -> {__MODULE__, :addsub, ["general"]}
             "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
+            "/doi/subscriptions" -> {__MODULE__, :doi_subscriptions, ["general"]}
             _ -> nil
           end
 
@@ -173,6 +174,7 @@ defmodule TenbewGw.Endpoint do
 
   defp config, do: Application.fetch_env(:tenbew_gw, __MODULE__)
   defp redirect_url, do: Application.get_env(:tenbew_gw, :redirect_url)
+  defp doi_api_url, do: Application.get_env(:tenbew_gw, :doi_api_url)
 
   def handle_errors(%{status: status} = conn, %{kind: _kind, reason: _reason, stack: _stack}),
     do: send_resp(conn, status, "Something went wrong")
@@ -248,22 +250,52 @@ defmodule TenbewGw.Endpoint do
     # When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
     # If the MSISDN is valid, Cell C returns a message that the subscriber is pending.
     # Otherwise may reject the request because the subscriber is either not a Cell C subscriber or other reasons.
-    payload = %{
-      "msisdn" => Map.get(map, "msisdn", ""),
-      "waspTID" => Map.get(map, "waspTID", ""),
-      "serviceID" => Map.get(map, "serviceID", ""),
-      "mn" => Map.get(map, "mn", "")
-    } |> Jason.encode!
+    # payload = %{
+    #   "msisdn" => Map.get(map, "msisdn", ""),
+    #   "waspTID" => Map.get(map, "waspTID", ""),
+    #   "serviceID" => Map.get(map, "serviceID", ""),
+    #   "mn" => Map.get(map, "mn", "")
+    # } |> Jason.encode!
+    # headers = [ {"Authorization", "Token token=PsmmvKBqQDOaWwEsPpOCYMsy"} ]
+    headers = [{"Content-Type", "application/json"}]
+    endpoint = doi_api_url() <> "/subscriptions"
+    msisdn = Map.get(map, "msisdn", "")
+    params = %{
+      "subscription" => %{
+        "msisdn" => msisdn,
+        "state" => "active",
+        "service" => "gateway",
+        "reference" => "testing api",
+        "message" => "gateway subscription"
+      }
+    } # |> Jason.encode!
 
-    # TODO these should be replaced with API response
-    %{
-      "error" => nil,
-      "payload" => payload,
-      "status" => "active",
-      "message" => "calling cell c API",
-      "services" => "serviceID"
-    }
+    response =
+      case request(endpoint, :post, headers, params, 30) do
+        {200, body} -> body
+        _ -> "error"
+      end
+    "RESPONSE : #{inspect(response)}" |> color_info(:green)
 
+    if is_binary(response) do
+      %{
+        "code" => 500,
+        "response" => nil,
+        "payload" => params,
+        "status" => "pending",
+        "error" => "#{response}",
+        "message" => "failed to call DOI API"
+      }
+    else
+      %{
+        "code" => 200,
+        "error" => nil,
+        "payload" => params,
+        "status" => "active",
+        "response" => Poison.decode(response),
+        "message" => "successfully called DOI API"
+      }
+    end
   rescue e ->
     "call_cell_c/1 exception : #{inspect e}" |> color_info(:red)
   end
@@ -283,11 +315,9 @@ defmodule TenbewGw.Endpoint do
     "update_subscription_details/2 exception : #{inspect e}" |> color_info(:red)
   end
 
-
   def addsub(conn, opts) do
     # 1. Add Subscriber - This happens when a subscriber through QQ portal ask to subscribe for service(s).
-    #                     QQ portal calls Tenbew gateway for downstream processing
-    # if is_nil(opts), do: raise AuthorizationError, message: "Authorization error"
+                        # QQ portal calls Tenbew gateway for downstream processing
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
     "POST /addsub :: msisdn: #{msisdn}" |> color_info(:lightblue)
@@ -305,59 +335,25 @@ defmodule TenbewGw.Endpoint do
       raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
     end
     # Step 4
-    response = call_cell_c(map)
-    unless response["status"] == "pending" do
-      raise ApiError, message: response["message"] || ""
-    end
-    # Step 5
-    update_subscription_details(msisdn, response)
-
-    # response_message = response["message"]
-    # conn
-    # |> put_resp_content_type(@content_type)
-    # |> send_resp(200, response_message)
-
-    # valid? =
-    #   if validate_parameters(map), do: true, else: raise ValidationError, message: "invalid params, missing details", status: 500
-    #   if validate_msisdn_format(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-    #   if validate_msisdn_existance(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-
-    # validated =
-    #   if validate_parameters(map) do
-    #     if validate_msisdn_format(msisdn) do
-    #       if validate_msisdn_existance(msisdn) do
-    #         true
-    #       else
-    #         raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-    #       end
-    #     else
-    #       raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-    #     end
-    #   else
-    #     raise ValidationError, message: "invalid params, missing details", status: 500
-    #   end
-
-    # if valid? do
-    #   response = call_cell_c(serialized_map)
-    #   if response["status"] == "pending" do
-    #     update_subscription_details(response)
-    #     conn
-    #     |> put_resp_content_type(@content_type)
-    #     |> send_resp(200, response)
-    #   else
-    #     raise ApiError, message: response["error"]
-    #   end
-    # else
-    #   raise ValidationError, message: "invalid msisdn", status: 502
+    doi_response = call_cell_c(map)
+    # unless doi_response["status"] == "pending" do
+    #   raise ApiError, message: response["message"] || ""
     # end
+    is_success =
+      if (doi_response["code"] == 200 and is_nil(doi_response["error"])), do: true, else: false
 
-    status = 200
-    message = "subscribed successfully"
+    # Step 5
+    if is_success do
+      "Successfull response, updating subscriber" |> color_info(:lightblue)
+      update_subscription_details(msisdn, doi_response)
+    end
+
+    status = if is_success, do: 200, else: doi_response["code"]
+
+    message = if is_success, do: "subscribed successfully", else: doi_response["message"]
+
     r_json(~m(status message)s)
   rescue
-    # e in AuthorizationError ->
-    #   "Authorization Error: #{e.message}" |> color_info(:red)
-    #   error(conn, e.message)
     e in ValidationError ->
       "Validation Error: #{e.message}" |> color_info(:red)
        status = e.status
@@ -373,6 +369,31 @@ defmodule TenbewGw.Endpoint do
       status = 500
       message = "error occured"
       r_json(~m(status message)s)
+  end
+
+  def doi_subscriptions(conn, _opts) do
+    endpoint = "#{doi_api_url()}/subscriptions"
+    headers = [{"Content-Type", "application/json"}]
+    # {:ok, status, _, client_ref} = :hackney.request(:get, endpoint, headers, "", [])
+    # {:ok, body} = :hackney.body(client_ref)
+    # {:ok, api_response} = Poison.decode(body)
+    response =
+      case request(endpoint, :get, headers, "", 20) do
+        {200, body} -> body
+        _ -> "error"
+      end
+    "RESPONSE : #{inspect(response)}" |> color_info(:green)
+
+    encoded_response =
+      if is_binary(response) do
+        %{error: "failed to call DOI API"}
+      else
+        Poison.encode!(response)
+      end
+
+    conn
+    |> put_resp_content_type(@content_type)
+    |> send_resp(200, encoded_response)
   end
 
   defp create_subscription(msisdn, status \\ "pending") do
@@ -479,6 +500,56 @@ defmodule TenbewGw.Endpoint do
     conn
     |> put_resp_content_type(@content_type)
     |> send_resp(200, Poison.encode!(response_message))
+  end
+
+  def bkp_addsub(conn, opts) do
+    "POST /addsub" |> color_info(:lightblue)
+    map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    valid? =
+      if valid_parameters(map) do
+        if valid_msisdn_format(msisdn) do
+          if valid_msisdn_existance(msisdn) do
+            true
+          else
+            raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+          end
+        else
+          raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+        end
+      else
+        raise ValidationError, message: "invalid params, missing details", status: 500
+      end
+
+    if valid? do
+      response = call_cell_c(map)
+      if response["status"] == "pending" do
+        update_subscription_details(msisdn, response)
+        conn
+        |> put_resp_content_type(@content_type)
+        |> send_resp(200, response)
+      else
+        raise ApiError, message: response["error"]
+      end
+    else
+      raise ValidationError, message: "invalid msisdn", status: 502
+    end
+  rescue
+    e in ValidationError ->
+      "Validation Error: #{e.message}" |> color_info(:red)
+       status = e.status
+       message = e.message
+       r_json(~m(status message)s)
+    e in ApiError ->
+      "API Error: #{e.message}" |> color_info(:red)
+      status = 501
+      message = e.message
+      r_json(~m(status message)s)
+    e ->
+      "Exception: #{inspect(e)}" |> color_info(:red)
+      status = 500
+      message = "error occured"
+      r_json(~m(status message)s)
   end
 
   # Helpers
