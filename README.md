@@ -20,9 +20,8 @@ end
 ### Dependencies
 
   * Make sure you have `Elixir` installed. You need to grab two libs:
-
-    Erlang >= 19.3
-    Elixir >= 1.6.4
+    - Erlang >= 19.3
+    - Elixir >= 1.6.4
 
 ### Development
 
@@ -35,9 +34,9 @@ end
 
 ### Usage
 
- Following contains general example of API requests demonstrated via CURL:
+ - Following contains general example of API requests demonstrated via CURL:
 
- API calls can also be called under the `api/v1/` namespace
+ - API calls can also be called under the `api/v1/` namespace
 
 #### Primary / Validation Endpoint
 
@@ -53,7 +52,7 @@ $ curl --request GET \
 
 1. Response: `Parameter` Validation
 
-``` http
+```
 {
   "status": 500,
   "message": "invalid params, missing details"
@@ -62,7 +61,7 @@ $ curl --request GET \
 
 2. Response: MSISDN `Format` Validation
 
-``` http
+```
 {
   "status": 501,
   "message": "invalid msisdn, incorrect format"
@@ -71,7 +70,7 @@ $ curl --request GET \
 
 3. Response: MSISDN `Existence` & `Status` Validation
 
-``` http
+```
 {
   "status": 502,
   "message": "invalid msisdn, already subscribed"
@@ -88,7 +87,7 @@ $ curl --request GET \
 $ curl -POST -H 'Content-Type: application/json' -d '{"msisdn":"0724444444"}' http://localhost:4000/api/v1/add_subscription
 ```
 
-``` http
+```
 {
   "type": "creation success",
   "message": "Created subscription with MSISDN 0724444444, ref: 2fc861a5-6f1f-4245-9aa8-d4c1c2d88a5c"
@@ -103,7 +102,7 @@ $ curl -POST -H 'Content-Type: application/json' -d '{"msisdn":"0724444444"}' ht
 $ curl "http://localhost:4000/get_subscription?msisdn=0724567890" -H 'Content-Type: application/json'
 ```
 
-``` http
+```
 {
   "type": "retrieved subscription",
   "message": "MSISDN 0724567890 found, status is: pending"
@@ -115,10 +114,10 @@ $ curl "http://localhost:4000/get_subscription?msisdn=0724567890" -H 'Content-Ty
 ● POST /api/v1/add_subscription
 
 ```shell
-☺ curl "http://localhost:4000/doi/subscriptions" -H 'Content-Type: application/json'
+$ curl "http://localhost:4000/doi/subscriptions" -H 'Content-Type: application/json'
 ```
 
-``` http
+```
 [
   {"state":"active","service":"none","reference":"test","msisdn":"27124247232","message":"first subscription","id":1,"api_key":null},
   {"state":"pending","service":"none","reference":"test","msisdn":"27121117232","message":"second subscription","id":2,"api_key":"qa2esYpIiY3z8GuDjzJETgtt"}
@@ -133,10 +132,9 @@ $ curl "http://localhost:4000/get_subscription?msisdn=0724567890" -H 'Content-Ty
 $ curl "http://localhost:4000/" -H 'Content-Type: application/json'
 ```
 
-``` http
+```
   <html><body>You are being <a href="http://localhost:4000/">redirected</a>.</body></html>
 ```
-
 
 ● GET /api/v1
 
@@ -144,10 +142,9 @@ $ curl "http://localhost:4000/" -H 'Content-Type: application/json'
 $ curl "http://localhost:4000/api/v1" -H 'Content-Type: application/json'
 ```
 
-``` http
+```
   {"type":"default","message":"welcome to tenbew gateway"}
 ```
-
 
 ● GET /anything_else
 
@@ -155,7 +152,7 @@ $ curl "http://localhost:4000/api/v1" -H 'Content-Type: application/json'
 $ curl "http://localhost:4000/anything_else" -H 'Content-Type: application/json'
 ```
 
-``` http
+```
   {"type":"error","message":"requested endpoint not available"}
 ```
 

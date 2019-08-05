@@ -75,81 +75,7 @@ defmodule Util.WebRequest do
     end
   end
 
-
-  def api_call(url, method \\ :get, headers \\ [], body \\ "", timeout \\ 10) do
-    body =
-      case body do
-        b when is_map(b) ->
-          "WebRequest body is map" |> color_info(:magenta)
-          "WebRequest url: #{inspect url}" |> color_info(:magenta)
-          "WebRequest method: #{inspect method}" |> color_info(:magenta)
-          "WebRequest headers: #{inspect headers}" |> color_info(:magenta)
-          "WebRequest body: #{inspect b}" |> color_info(:magenta)
-          "WebRequest timeout: #{inspect timeout}" |> color_info(:magenta)
-          Jason.encode!(b)
-        b when is_binary(b) ->
-          "WebRequest body is binary" |> color_info(:magenta)
-          "WebRequest url: #{inspect url}" |> color_info(:magenta)
-          "WebRequest method: #{inspect method}" |> color_info(:magenta)
-          "WebRequest headers: #{inspect headers}" |> color_info(:magenta)
-          "WebRequest body: #{inspect b}" |> color_info(:magenta)
-          "WebRequest timeout: #{inspect timeout}" |> color_info(:magenta)
-          b
-        b ->
-          "WebRequest body is strange, defaulting to empty string" |> color_info(:magenta)
-          "WebRequest url: #{inspect url}" |> color_info(:magenta)
-          "WebRequest method: #{inspect method}" |> color_info(:magenta)
-          "WebRequest headers: #{inspect headers}" |> color_info(:magenta)
-          "WebRequest body: #{inspect b}" |> color_info(:magenta)
-          "WebRequest timeout: #{inspect timeout}" |> color_info(:magenta)
-          ""
-      end
-
-    pool = :default
-    timeout = timeout * 1000
-    options = [async: :once, connect_timeout: timeout, recv_timeout: timeout, pool: pool]
-    {:ok, ref} = :hackney.request(method, url, headers, body, options)
-    "WebRequest body: #{inspect body} has ref #{inspect ref}" |> color_info(:magenta)
-
-    receive do
-      {:hackney_response, ^ref, {:status, status, reason}} ->
-        body = loop(ref)
-        case Jason.decode(body) do
-          {:ok, val} -> {status, val}
-          {:error, error} ->
-            "Jason decode error #{inspect error}" |> color_info(:red)
-            {403, "decode error"}
-        end
-      val ->
-        "non matched response from hackney in WebRequest.request receive #{inspect val}" |> color_info(:red)
-        :hackney.stop_async(ref)
-        {403, "internal service is busy"}
-    after
-      timeout ->
-        "request timeout" |> color_info(:yellow)
-        error = "request timeout"
-        :hackney.stop_async(ref)
-        {403, %{"error" => error}}
-    end
-  rescue
-    e ->
-      "rescuing WebRequest.request #{inspect e}" |> color_info(:red)
-      st_data(System.stacktrace(), e) |> log_error_data()
-      {403, "undefined error"}
-  end
-
-  def api_call!(url, method, headers, body, timeout \\ 5) do
-    case api_call(url, method, headers, body, timeout) do
-      {200, response} ->
-        response
-      {x, y} ->
-        raise WebRequestError, message: "#{x}, #{inspect(y)}"
-      x ->
-        "Undefined error: #{inspect(x)}" |> color_info(:yellow)
-        raise WebRequestError, message: "undefined error"
-    end
-  end
-
+  # Tests
 
   def test() do
     case request("http://localhost:4000/#{@base_api}/get_subscription?msisdn=0712363482", :get, [], "", 5) do
@@ -162,7 +88,7 @@ defmodule Util.WebRequest do
   def test2() do
     s = TenbewGw.Model.Subscription.get_first_subscription()
     msisdn = s.msisdn
-    data = ~m(msisdn)s # |> Poison.encode!()
+    data = ~m(msisdn)s
     case request("http://localhost:4000/#{@base_api}/add_subscriber", :post, [], data, 5) do
       {200, body} -> body
       _ ->
@@ -171,8 +97,6 @@ defmodule Util.WebRequest do
   end
 
   def test3() do
-    # unknown = "1231"
-    # data = ~m(unknown)s # |> Poison.encode!()
     data = %{"unknown" => "1231"}
     case request("http://localhost:4000/#{@base_api}/add_subscriber", :post, [], data, 5) do
       {200, body} -> body
@@ -183,7 +107,7 @@ defmodule Util.WebRequest do
 
   def test4() do
     msisdn = "0723321527"
-    data = ~m(msisdn)s # |> Poison.encode!()
+    data = ~m(msisdn)s
     case request("http://localhost:4000/#{@base_api}/add_subscriber", :post, [], data, 5) do
       {200, body} -> body
       _ ->
