@@ -24,4 +24,7 @@ config :tenbew_gw, error_loggers: [:screen, :file_logger]
 
 config :tenbew_gw, base_api: "api/v1"
 
+config :logger, :console,
+  metadata: [:request_id]
+
 import_config "#{Mix.env()}.exs"

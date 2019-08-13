@@ -26,9 +26,11 @@ defmodule TenbewGw.Endpoint do
   alias Plug.{Adapters.Cowboy2, HTML}
   alias TenbewGw.{Repo, Model.Subscription}
 
-  require Logger
+  plug(Plug.RequestId)
 
-  plug(Plug.Logger, log: :debug)
+  require Logger
+  plug(Plug.Logger, log: :info)
+  # plug(Plug.Logger, log: :debug)
   plug(:match)
 
   plug(Plug.Parsers,
@@ -106,7 +108,10 @@ defmodule TenbewGw.Endpoint do
       case conn.method do
         "GET" ->
           case route do
-            "/addsub.php" -> {__MODULE__, :addsub, ["general"]}
+            "/addsub.php" -> {__MODULE__, :add_sub, ["general"]}
+            "/ChargeSub" -> {__MODULE__, :charge_sub, ["general"]}
+            "/CancelSub" -> {__MODULE__, :cancel_sub, ["general"]}
+
             "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
             "/doi/subscriptions" -> {__MODULE__, :doi_subscriptions, ["general"]}
             _ -> nil
@@ -124,10 +129,7 @@ defmodule TenbewGw.Endpoint do
 
     if is_nil(route_match) do
       "NOT FOUND" |> color_info(:red)
-      # conn
-      # |> put_resp_header("location", redirect_url())
-      # |> put_resp_content_type("text/html")
-      # |> send_resp(302, redirect_body())
+
       conn
       |> put_resp_content_type(@content_type)
       |> send_resp(404, not_found_message())
@@ -191,6 +193,8 @@ defmodule TenbewGw.Endpoint do
 
   # STEP 1 - Receive add subscriber request
   def valid_parameters(map) when is_map(map) do
+    "valid_parameters/1" |> color_info(:yellow)
+
     # The request will originate from the Cell C QQ portal for a new subscriber.
     # QQ will call addSub function with the MSISDN and other parameters that will determine the request routing
     keys = ~w(waspTID serviceID msisdn mn)
@@ -201,6 +205,7 @@ defmodule TenbewGw.Endpoint do
 
   # STEP 2 - Conduct basic MSISDN Validation
   def valid_msisdn_format(msisdn) do
+    "valid_msisdn_format/1" |> color_info(:yellow)
     # The basic validation required here is to determine that the MSISDN is 11 digits long starting with 27, only numeric
     case msisdn do
       val when val in [nil, ""] -> false
@@ -229,6 +234,7 @@ defmodule TenbewGw.Endpoint do
 
   # STEP 3 - Check if the MSISDN is already Subscribed
   def valid_msisdn_existance(msisdn) do
+    "valid_msisdn_existance/1" |> color_info(:yellow)
     # This processes queries Tenbew database to see if the MSISDN is registered in the subscriber database and listed as either pending or active
     if Subscription.exists?(msisdn) do
       case Subscription.get_status(msisdn) do
@@ -244,6 +250,7 @@ defmodule TenbewGw.Endpoint do
     false
   end
 
+  # TODO
   # STEP 4 - Call up Cell C DOI Service
   def call_cell_c(map) do
     # The DOI service (double opt in) is a legal requirement. It allows the subscriber to confirm that they have indeed made the decision to subscriber.
@@ -273,7 +280,9 @@ defmodule TenbewGw.Endpoint do
     response =
       case request(endpoint, :post, headers, params, 30) do
         {200, body} -> body
-        _ -> "error"
+        {:error, :econnrefused} -> "connection error"
+        {:econnrefused, error} -> "connection error: #{error}"
+        _ -> "general error"
       end
     "RESPONSE : #{inspect(response)}" |> color_info(:green)
 
@@ -296,8 +305,14 @@ defmodule TenbewGw.Endpoint do
         "message" => "successfully called DOI API"
       }
     end
-  rescue e ->
-    "call_cell_c/1 exception : #{inspect e}" |> color_info(:red)
+  rescue
+    e in MatchError ->
+      "call_cell_c/1 :: MatchError error : #{inspect e}" |> color_info(:red)
+
+    e in HackneyConnectionError ->
+      "call_cell_c/1 :: HackneyConnectionError error : #{inspect e}" |> color_info(:red)
+
+    e -> "call_cell_c/1 :: exception : #{inspect e}" |> color_info(:red)
   end
 
   # STEP 5 - Update Database, send code 200 to QQ
@@ -315,12 +330,15 @@ defmodule TenbewGw.Endpoint do
     "update_subscription_details/2 exception : #{inspect e}" |> color_info(:red)
   end
 
-  def addsub(conn, opts) do
-    # 1. Add Subscriber - This happens when a subscriber through QQ portal ask to subscribe for service(s).
-                        # QQ portal calls Tenbew gateway for downstream processing
+
+  def add_sub(conn, opts) do
+    # 1. Add Subscriber.
+      # This happens when a subscriber through QQ portal ask to subscribe for service(s). QQ portal calls Tenbew gateway for downstream processing
+      # https://156.38.208.218/addsub.php?waspTID=QQChina&serviceID=00&msisdn=XXXX&mn= CellC_ZA
     map = req_query_params(conn)
+    Logger.metadata()[:request_id]
     msisdn = Map.get(map, "msisdn", "")
-    "POST /addsub :: msisdn: #{msisdn}" |> color_info(:lightblue)
+    "GET /addsub :: msisdn: #{msisdn}" |> color_info(:lightblue)
 
     # Step 1
     unless valid_parameters(map) do
@@ -370,6 +388,109 @@ defmodule TenbewGw.Endpoint do
       message = "error occured"
       r_json(~m(status message)s)
   end
+
+
+  def charge_sub(conn, opts) do
+    # 2. Charge Subscriber.
+       # This is a call from Tenbew to charge the subscriber for usage of the content. Tenbew then sends the call to Cell C after basic validation
+       # https://156.38.208.218/ChargeSub? waspTID=QQChina&serviceID=00&msisdn=XXXX&mn=CellC_ZA
+    map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    "GET /ChargeSub" |> color_info(:lightblue)
+
+    valid? =
+      if valid_parameters(map) do
+        if valid_msisdn_format(msisdn) do
+          if valid_msisdn_existance(msisdn) do
+            true
+          else
+            raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+          end
+        else
+          raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+        end
+      else
+        raise ValidationError, message: "invalid params, missing details", status: 500
+      end
+
+    if valid? do
+      response = call_cell_c(map)
+      if response["status"] == "pending" do
+        update_subscription_details(msisdn, response)
+        conn
+        |> put_resp_content_type(@content_type)
+        |> send_resp(200, response)
+      else
+        raise ApiError, message: response["error"]
+      end
+    else
+      raise ValidationError, message: "invalid msisdn", status: 502
+    end
+  rescue
+    e in ValidationError ->
+      "Validation Error: #{e.message}" |> color_info(:red)
+       status = e.status
+       message = e.message
+       r_json(~m(status message)s)
+    e in ApiError ->
+      "API Error: #{e.message}" |> color_info(:red)
+      status = 501
+      message = e.message
+      r_json(~m(status message)s)
+    e ->
+      "Exception: #{inspect(e)}" |> color_info(:red)
+      status = 500
+      message = "error occured"
+      r_json(~m(status message)s)
+  end
+
+
+  def cancel_sub(conn, opts) do
+    # 3. Cancel Subscription.
+        # This takes place when the subscriber no longer wants subscribe for the content. They initiate the cancel subscription from QQ portal
+        # https://156.38.208.218/Cancelsub.php?waspTID=QQChina&serviceID=00&msisdn=XXXX&mn=CellC_ZA
+    map = req_query_params(conn)
+    Logger.metadata()[:request_id]
+    msisdn = Map.get(map, "msisdn", "")
+    "GET /CancelSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
+
+    is_valid? =
+      if valid_parameters(map) do
+        if valid_msisdn_format(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+        if valid_msisdn_existance(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+      else
+        false
+      end
+
+    status =
+      case is_valid? do
+        true -> 200
+        false -> 500
+        _ -> 500
+      end
+
+    message =
+      case is_valid? do
+        true -> "cancelled successfully"
+        false -> "cancellation failed"
+        _ -> "cancellation failed"
+      end
+
+    r_json(~m(status message)s)
+  rescue
+    e in ValidationError ->
+      "Validation Error: #{e.message}" |> color_info(:red)
+       status = e.status
+       message = e.message
+       r_json(~m(status message)s)
+    e ->
+      "Exception: #{inspect(e)}" |> color_info(:red)
+      status = 500
+      message = "error occured"
+      r_json(~m(status message)s)
+  end
+
+
 
   def doi_subscriptions(conn, _opts) do
     endpoint = "#{doi_api_url()}/subscriptions"
@@ -500,56 +621,6 @@ defmodule TenbewGw.Endpoint do
     conn
     |> put_resp_content_type(@content_type)
     |> send_resp(200, Poison.encode!(response_message))
-  end
-
-  def bkp_addsub(conn, opts) do
-    "POST /addsub" |> color_info(:lightblue)
-    map = req_query_params(conn)
-    msisdn = Map.get(map, "msisdn", "")
-    valid? =
-      if valid_parameters(map) do
-        if valid_msisdn_format(msisdn) do
-          if valid_msisdn_existance(msisdn) do
-            true
-          else
-            raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-          end
-        else
-          raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-        end
-      else
-        raise ValidationError, message: "invalid params, missing details", status: 500
-      end
-
-    if valid? do
-      response = call_cell_c(map)
-      if response["status"] == "pending" do
-        update_subscription_details(msisdn, response)
-        conn
-        |> put_resp_content_type(@content_type)
-        |> send_resp(200, response)
-      else
-        raise ApiError, message: response["error"]
-      end
-    else
-      raise ValidationError, message: "invalid msisdn", status: 502
-    end
-  rescue
-    e in ValidationError ->
-      "Validation Error: #{e.message}" |> color_info(:red)
-       status = e.status
-       message = e.message
-       r_json(~m(status message)s)
-    e in ApiError ->
-      "API Error: #{e.message}" |> color_info(:red)
-      status = 501
-      message = e.message
-      r_json(~m(status message)s)
-    e ->
-      "Exception: #{inspect(e)}" |> color_info(:red)
-      status = 500
-      message = "error occured"
-      r_json(~m(status message)s)
   end
 
   # Helpers
