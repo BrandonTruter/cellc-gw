@@ -490,32 +490,7 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-
-
-  def doi_subscriptions(conn, _opts) do
-    endpoint = "#{doi_api_url()}/subscriptions"
-    headers = [{"Content-Type", "application/json"}]
-    # {:ok, status, _, client_ref} = :hackney.request(:get, endpoint, headers, "", [])
-    # {:ok, body} = :hackney.body(client_ref)
-    # {:ok, api_response} = Poison.decode(body)
-    response =
-      case request(endpoint, :get, headers, "", 20) do
-        {200, body} -> body
-        _ -> "error"
-      end
-    "RESPONSE : #{inspect(response)}" |> color_info(:green)
-
-    encoded_response =
-      if is_binary(response) do
-        %{error: "failed to call DOI API"}
-      else
-        Poison.encode!(response)
-      end
-
-    conn
-    |> put_resp_content_type(@content_type)
-    |> send_resp(200, encoded_response)
-  end
+  # TODO - UPDATE
 
   defp create_subscription(msisdn, status \\ "pending") do
     "create_subscription/1 :: #{inspect(msisdn)}" |> color_info(:yellow)
@@ -545,7 +520,32 @@ defmodule TenbewGw.Endpoint do
     e -> "update_subscription_status/2 exception: #{inspect e}" |> color_info(:red)
   end
 
-  # Initial testing endpoints
+  # TODO - REMOVE
+
+  def doi_subscriptions(conn, _opts) do
+    endpoint = "#{doi_api_url()}/subscriptions"
+    headers = [{"Content-Type", "application/json"}]
+    # {:ok, status, _, client_ref} = :hackney.request(:get, endpoint, headers, "", [])
+    # {:ok, body} = :hackney.body(client_ref)
+    # {:ok, api_response} = Poison.decode(body)
+    response =
+      case request(endpoint, :get, headers, "", 20) do
+        {200, body} -> body
+        _ -> "error"
+      end
+    "RESPONSE : #{inspect(response)}" |> color_info(:green)
+
+    encoded_response =
+      if is_binary(response) do
+        %{error: "failed to call DOI API"}
+      else
+        Poison.encode!(response)
+      end
+
+    conn
+    |> put_resp_content_type(@content_type)
+    |> send_resp(200, encoded_response)
+  end
 
   def get_subscription(conn, _opts) do
     "get_subscription/2" |> color_info(:lightblue)

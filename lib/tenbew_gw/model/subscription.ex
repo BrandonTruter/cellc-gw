@@ -27,11 +27,12 @@ defmodule TenbewGw.Model.Subscription do
     |> validate_required([:msisdn, :status])
   end
 
+  # Changesets
+
   def create_changeset(%Subscription{} = subscription, attrs) do
     changeset(subscription, attrs)
   end
 
-  @doc false
   def status_changeset(%Subscription{} = subscription, attrs) do
     subscription
     |> cast(attrs, [:status])
@@ -56,6 +57,8 @@ defmodule TenbewGw.Model.Subscription do
       |> Repo.update()
   end
 
+  # Queries
+
   def get!(id), do: Repo.get!(Subscription, id)
   def get(id) do
     Repo.get(Subscription, id)
@@ -65,8 +68,6 @@ defmodule TenbewGw.Model.Subscription do
 
   def get_by_msisdn(msisdn) do
     query = from(s in Subscription, where: s.msisdn == ^msisdn)
-    # subscriptions = Repo.all(query)
-    # if length(subscriptions) > 1, do: List.first(subscriptions), else: subscriptions
     Repo.all(query) |> List.first()
   rescue e ->
     nil
@@ -90,7 +91,6 @@ defmodule TenbewGw.Model.Subscription do
   def exists?(msisdn) do
     s = from(s in Subscription, where: s.msisdn == ^msisdn) |> Repo.all()
     if length(s) <= 0, do: false, else: true
-    # if is_nil(s), do: false, else: true
   end
 
   def set_validated(msisdn) do
@@ -103,6 +103,17 @@ defmodule TenbewGw.Model.Subscription do
 
   def get_first_subscription() do
     Subscription |> Repo.all() |> List.first()
+  end
+
+  # Helpers
+
+  def status() do
+    %{
+      active:    000, # This subscriber has been taken through the double opt in process and confirmed
+      pending:   100, # The subscriber has been submitted for the DOI process, but has not confirmed yet
+      cancelled: 200, # The subscriber has cancelled the subscription. For purposes of development, the subscriber will be assumed to be non-existent in the database.
+      unknown:   900  # anything else, not supported, unavailable
+    }
   end
 
 end
