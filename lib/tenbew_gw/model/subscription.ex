@@ -3,6 +3,7 @@ defmodule TenbewGw.Model.Subscription do
   import Ecto.Changeset
   import Ecto.Query , warn: false
   alias TenbewGw.Model.Subscription
+  alias TenbewGw.Model.Payment
   alias TenbewGw.Repo
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -11,6 +12,8 @@ defmodule TenbewGw.Model.Subscription do
     field(:status, :string)
     field(:services, :string)
     field(:validated, :boolean)
+
+    has_many(:payments, TenbewGw.Model.Payment)
 
     timestamps()
   end
@@ -103,6 +106,31 @@ defmodule TenbewGw.Model.Subscription do
 
   def get_first_subscription() do
     Subscription |> Repo.all() |> List.first()
+  end
+
+  # Payments
+
+  def get_payments(id) do
+    s = Subscription |> Repo.get(id)
+    query = from p in Payment, where: p.subscription_id == ^s.id
+    Repo.all(query)
+  rescue e ->
+    nil
+  end
+
+  def get_payments_by_msisdn(msisdn) do
+    s = get_by_msisdn(msisdn)
+    query = from p in Payment, where: p.msisdn == ^msisdn or p.subscription_id == ^s.id
+    Repo.all(query)
+  rescue e ->
+    nil
+  end
+
+  def last_payment_by_subscriber(subscription) do
+    query = from(p in Payment, where: p.subscription_id == ^subscription.id)
+    Repo.all(query)
+      |> List.first()
+    rescue e -> nil
   end
 
   # Helpers
