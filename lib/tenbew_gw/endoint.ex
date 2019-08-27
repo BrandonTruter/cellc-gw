@@ -552,133 +552,103 @@ defmodule TenbewGw.Endpoint do
     |> send_resp(200, encoded_response)
   end
 
-  def get_subscription(conn, _opts) do
-    "get_subscription/2" |> color_info(:lightblue)
-    params = req_query_params(conn)
-    response_message = %{
-      type: "finding subscription",
-      message: "searching DB for subscriber"
-    }
-
-    if params["msisdn"] do
-      msisdn = Map.get(params, "msisdn", "")
-
-      if Subscription.exists?(msisdn) do
-        status = Subscription.get_status(msisdn)
-        response_message = %{
-          type: "retrieved subscription",
-          message: "MSISDN #{msisdn} found, status is: #{status}"
-        }
-      else
-        response_message = %{
-          type: "no existing subscription",
-          message: "MSISDN #{msisdn} not found"
-        }
-      end
-    end
-
-    encoded_response = Poison.encode!(response_message)
-
-    conn
-    |> put_resp_content_type(@content_type)
-    |> send_resp(200, encoded_response)
-  end
 
   def add_subscription(conn, _opts) do
-    "add_subscription/2" |> color_info(:lightblue)
     map = req_body_map(conn)
-    response_message = %{
-      type: "creation started",
-      message: "adding subscriber"
-    }
+    status = map |> Map.get("status")
     msisdn = Map.get(map, "msisdn", "")
+    "add_subscription/2" |> color_info(:lightblue)
 
-    if msisdn == "" do
-      response_message = %{
-        type: "creation failed",
-        message: "MSISDN is required"
-      }
-    else
-      if Subscription.exists?(msisdn) do
-        response_message = %{
-          type: "creation stopped",
-          message: "Subscription for MSISDN #{msisdn} already exists"
-        }
+    subscription =
+      if empty?(msisdn) do
+        %{error: "MSISDN required"}
       else
-        status = map |> Map.get("status")
-        create_subscription(msisdn, status)
-        subscription = Subscription.get_by_msisdn(msisdn)
-        response_message =
-          if is_nil(subscription) do
-            %{
-              type: "creation failed",
-              message: "Error subscribing MSISDN #{msisdn} in DB"
-            }
-          else
-            %{
-              type: "creation success",
-              message: "Created subscription with MSISDN #{msisdn}, ref: #{subscription.id}"
-            }
+        if Subscription.exists?(msisdn) do
+          %{error: "Subscription already exists"}
+        else
+          case create_subscription(msisdn, status) do
+            {:ok, subscription} -> %{success: formatted_subscriber(subscription)}
+            {:error, error} -> %{error: "#{inspect(error)}"}
+            _ -> %{error: "failed to create subscription"}
           end
+        end
       end
-    end
 
-    conn
-    |> put_resp_content_type(@content_type)
-    |> send_resp(200, Poison.encode!(response_message))
+    r_json(~m(subscription))
+  rescue e ->
+    "add_subscription/2 exception: #{inspect e}" |> color_info(:red)
   end
-
 
   def add_payment(conn, _opts) do
     map = req_body_map(conn)
     msisdn = Map.get(map, "msisdn", "")
-    "add_payment/2 :: msisdn: #{msisdn}" |> color_info(:lightblue)
+    "add_payment/2" |> color_info(:lightblue)
 
     payment =
       if empty?(msisdn) do
         %{error: "msisdn is required"}
       else
-        # if Payment.exists?(msisdn) do
-          # %{error: "payment already exists"}
-        # else
-          if Subscription.exists?(msisdn) do
-            subscriber = Subscription.get_by_msisdn(msisdn)
-            status = Map.get(map, "status", "paying")
-            amount = Map.get(map, "amount", 0)
-            attrs = %{
-              msisdn: msisdn,
-              amount: amount,
-              status: status,
-              service_type: "tester",
-              subscription_id: subscriber.id
-            }
-            case Payment.create_payment(attrs) do
-              {:ok, payment} ->
-                "Payment Success: #{inspect(payment)}" |> color_info(:green)
-                %{success: formatted_payment(payment)}
+        if Subscription.exists?(msisdn) do
+          subscriber = Subscription.get_by_msisdn(msisdn)
+          status = Map.get(map, "status", "paying")
+          amount = Map.get(map, "amount", 0)
+          attrs = %{
+            msisdn: msisdn,
+            amount: amount,
+            status: status,
+            service_type: "tester",
+            subscription_id: subscriber.id
+          }
+          case Payment.create_payment(attrs) do
+            {:ok, payment} ->
+              "Payment Success: #{inspect(payment)}" |> color_info(:green)
+              %{success: formatted_payment(payment)}
 
-              {:error, %Ecto.Changeset{} = changeset} ->
-                errors = inspect(changeset_errors(changeset))
-                "Payment Error:#{errors}" |> color_info(:red)
-                %{error: errors}
+            {:error, %Ecto.Changeset{} = changeset} ->
+              errors = inspect(changeset_errors(changeset))
+              "Payment Error:#{errors}" |> color_info(:red)
+              %{error: errors}
 
-              {:error, error} ->
-                "Payment Error: #{inspect(error)}" |> color_info(:red)
-                %{error: "#{inspect(error)}"}
+            {:error, error} ->
+              "Payment Error: #{inspect(error)}" |> color_info(:red)
+              %{error: "#{inspect(error)}"}
 
-              _ ->
-                "Error creating payment" |> color_info(:red)
-                %{error: "failed to create payment"}
-            end
-          else
-            %{error: "no subscriber found"}
+            _ ->
+              "Error creating payment" |> color_info(:red)
+              %{error: "failed to create payment"}
           end
-        # end
+        else
+          %{error: "no subscriber found"}
+        end
       end
 
     r_json(~m(payment))
   rescue e ->
     "add_payment/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
+
+  def get_subscription(conn, _opts) do
+    params = req_query_params(conn)
+    msisdn = Map.get(params, "msisdn", "")
+    "get_subscription/2 :: params: #{inspect(params)}" |> color_info(:lightblue)
+
+    subscription =
+      if empty?(msisdn) do
+        %{error: "MSISDN required"}
+      else
+        if Subscription.exists?(msisdn) do
+          status = Subscription.get_status(msisdn)
+          # %{success: formatted_subscriber(subscription)}
+          %{success: "MSISDN #{msisdn} found, status is: #{status}"}
+        else
+          %{error: "MSISDN #{msisdn} not found"}
+        end
+      end
+
+    r_json(~m(subscription))
+  rescue e ->
+    "get_subscription/2 exception: #{inspect e}" |> color_info(:red)
   end
 
   def get_payment(conn, _opts) do
@@ -708,8 +678,18 @@ defmodule TenbewGw.Endpoint do
     "get_payment/2 exception: #{inspect e}" |> color_info(:red)
   end
 
-
   # Helpers
+
+  defp formatted_subscriber(subscription) do
+    %{
+      id: subscription.id,
+      msisdn: subscription.msisdn,
+      status: subscription.status,
+      services: subscription.services
+      # date: subscription.updated_at || subscription.inserted_at,
+      # is_validated: (if subscription.validated == true, do: "Yes", else: "No")
+    }
+  end
 
   defp formatted_payment(payment) do
     %{

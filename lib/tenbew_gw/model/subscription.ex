@@ -2,8 +2,7 @@ defmodule TenbewGw.Model.Subscription do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query , warn: false
-  alias TenbewGw.Model.Subscription
-  alias TenbewGw.Model.Payment
+  alias TenbewGw.Model.{Subscription, Payment}
   alias TenbewGw.Repo
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -29,8 +28,6 @@ defmodule TenbewGw.Model.Subscription do
     ])
     |> validate_required([:msisdn, :status])
   end
-
-  # Changesets
 
   def create_changeset(%Subscription{} = subscription, attrs) do
     changeset(subscription, attrs)
@@ -60,8 +57,6 @@ defmodule TenbewGw.Model.Subscription do
       |> Repo.update()
   end
 
-  # Queries
-
   def get!(id), do: Repo.get!(Subscription, id)
   def get(id) do
     Repo.get(Subscription, id)
@@ -71,7 +66,8 @@ defmodule TenbewGw.Model.Subscription do
 
   def get_by_msisdn(msisdn) do
     query = from(s in Subscription, where: s.msisdn == ^msisdn)
-    Repo.all(query) |> List.first()
+    Repo.all(query)
+    |> List.first()
   rescue e ->
     nil
   end
@@ -129,11 +125,9 @@ defmodule TenbewGw.Model.Subscription do
   def last_payment_by_subscriber(subscription) do
     query = from(p in Payment, where: p.subscription_id == ^subscription.id)
     Repo.all(query)
-      |> List.first()
+    |> List.first()
     rescue e -> nil
   end
-
-  # Helpers
 
   def status() do
     %{
