@@ -17,28 +17,27 @@ defmodule TenbewGw.Endpoint do
   use Plug.Router
   use Plug.Debugger
   use Plug.ErrorHandler
+
   import Plug.Conn
   import Util.Log
   import Util.WebRequest
   import ShortMaps
 
+  alias TenbewGw.Repo
   alias TenbewGw.Router
   alias Plug.{Adapters.Cowboy2, HTML}
-  alias TenbewGw.{Repo, Model.Subscription}
-
-  plug(Plug.RequestId)
+  alias TenbewGw.Model.{Payment, Subscription}
 
   require Logger
-  plug(Plug.Logger, log: :info)
-  # plug(Plug.Logger, log: :debug)
-  plug(:match)
 
+  plug(:match)
+  plug(Plug.Logger, log: :info)
+  plug(Plug.RequestId)
   plug(Plug.Parsers,
     parsers: [:urlencoded, :json],
     pass: ["application/json", "application/octet-stream"],
     json_decoder: Poison # Jason
   )
-
   plug(:dispatch)
 
   @content_type "application/json"
@@ -112,6 +111,7 @@ defmodule TenbewGw.Endpoint do
             "/ChargeSub" -> {__MODULE__, :charge_sub, ["general"]}
             "/CancelSub" -> {__MODULE__, :cancel_sub, ["general"]}
 
+            "/get_payment" -> {__MODULE__, :get_payment, ["general"]}
             "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
             "/doi/subscriptions" -> {__MODULE__, :doi_subscriptions, ["general"]}
             _ -> nil
@@ -120,6 +120,7 @@ defmodule TenbewGw.Endpoint do
         "POST" ->
           case route do
             "/add_subscription" -> {__MODULE__, :add_subscription, ["general"]}
+            "/add_payment" -> {__MODULE__, :add_payment, ["general"]}
             _ -> nil
           end
 
@@ -175,8 +176,12 @@ defmodule TenbewGw.Endpoint do
   end
 
   defp config, do: Application.fetch_env(:tenbew_gw, __MODULE__)
-  defp redirect_url, do: Application.get_env(:tenbew_gw, :redirect_url)
+
   defp doi_api_url, do: Application.get_env(:tenbew_gw, :doi_api_url)
+
+  defp redirect_url, do: Application.get_env(:tenbew_gw, :redirect_url)
+
+  def error(conn, error, error_number \\ 403), do: send_resp(conn, error_number, error)
 
   def handle_errors(%{status: status} = conn, %{kind: _kind, reason: _reason, stack: _stack}),
     do: send_resp(conn, status, "Something went wrong")
@@ -188,7 +193,7 @@ defmodule TenbewGw.Endpoint do
     send_resp(conn, status, "#{err_msg}")
   end
 
-  def error(conn, error, error_number \\ 403), do: send_resp(conn, error_number, error)
+
 
 
   # STEP 1 - Receive add subscriber request
@@ -623,7 +628,100 @@ defmodule TenbewGw.Endpoint do
     |> send_resp(200, Poison.encode!(response_message))
   end
 
+
+  def add_payment(conn, _opts) do
+    map = req_body_map(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    "add_payment/2 :: msisdn: #{msisdn}" |> color_info(:lightblue)
+
+    payment =
+      if empty?(msisdn) do
+        %{error: "msisdn is required"}
+      else
+        if Payment.exists?(msisdn) do
+          %{error: "payment already exists"}
+        else
+          if Subscription.exists?(msisdn) do
+            subscriber = Subscription.get_by_msisdn(msisdn)
+            status = Map.get(map, "status", "paying")
+            amount = Map.get(map, "amount", 0)
+            attrs = %{
+              msisdn: msisdn,
+              amount: amount,
+              status: status,
+              service_type: "tester",
+              subscription_id: subscriber.id
+            }
+            case Payment.create_payment(attrs) do
+              {:ok, payment} ->
+                "Payment Success: #{inspect(payment)}" |> color_info(:green)
+                %{success: formatted_payment(payment)}
+
+              {:error, %Ecto.Changeset{} = changeset} ->
+                errors = inspect(changeset_errors(changeset))
+                "Payment Error:#{errors}" |> color_info(:red)
+                %{error: errors}
+
+              {:error, error} ->
+                "Payment Error: #{inspect(error)}" |> color_info(:red)
+                %{error: "#{inspect(error)}"}
+
+              _ ->
+                "Error creating payment" |> color_info(:red)
+                %{error: "failed to create payment"}
+            end
+          else
+            %{error: "no subscriber found"}
+          end
+        end
+      end
+
+    r_json(~m(payment))
+  rescue e ->
+    "add_payment/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
+  def get_payment(conn, _opts) do
+    params = req_query_params(conn)
+    "get_payment/2 :: params: #{inspect(params)}" |> color_info(:lightblue)
+
+    payment =
+      if params["id"] do
+        Payment.get_payment(params["id"])
+      else
+        if params["msisdn"] do
+          Payment.get_payment_by_msisdn(params["msisdn"]) # || Subscription.get_payments_by_msisdn(params["msisdn"])
+        else
+          ""
+        end
+      end # || "none"
+
+    payment =
+      if empty?(payment) do
+        %{error: "no payment found"}
+      else
+        %{success: formatted_payment(payment)}
+      end
+
+    r_json(~m(payment))
+  rescue e ->
+    "get_payment/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
+
   # Helpers
+
+  defp formatted_payment(payment) do
+    %{
+      id: payment.id,
+      mobile: payment.msisdn,
+      amount: payment.amount,
+      status: payment.status,
+      payment_date: payment.paid_at || payment.inserted_at,
+      is_paid: (if payment.paid == true, do: "Yes", else: "No")
+    }
+  end
+
 
   defp changeset_errors(changeset) do
     field_name = get_field_name(changeset)
@@ -643,6 +741,22 @@ defmodule TenbewGw.Endpoint do
     |> List.first()
     |> elem(1)
     |> elem(0)
+  end
+
+  def empty?(val) when is_nil(val) do
+    true
+  end
+
+  def empty?(val) when is_binary(val) do
+    if val == "" do
+      true
+    else
+      false
+    end
+  end
+
+  def empty?(val) do
+    false
   end
 
   defp not_found_message() do

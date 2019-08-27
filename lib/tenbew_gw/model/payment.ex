@@ -30,6 +30,7 @@ defmodule TenbewGw.Model.Payment do
         :amount,
         :currency,
         :service_type,
+        :subscription_id,
         :paid_at,
         :paid
       ])
@@ -57,10 +58,10 @@ defmodule TenbewGw.Model.Payment do
 
   def list_payments(), do: Repo.all(Payment)
 
-  def get_payment!(id), do: Repo.get!(Payment, id)
+  def get_payment(id), do: Repo.get!(Payment, id)
 
-  def get_payment_by_msisdn!(msisdn),
-    do: Repo.get_by!(Payment, msisdn: msisdn)
+  def get_payment_by_msisdn(msisdn),
+    do: Repo.get_by(Payment, msisdn: msisdn)
 
   def get_payments_by_subscriber(subscription_id) do
     query = from p in Payment, where: p.subscription_id == ^subscription_id
@@ -74,6 +75,11 @@ defmodule TenbewGw.Model.Payment do
 
   def get_first_payment() do
     Payment |> Repo.all() |> List.first()
+  end
+
+  def exists?(msisdn) do
+    payments = from(p in Payment, where: p.msisdn == ^msisdn) |> Repo.all()
+    if length(payments) <= 0, do: false, else: true
   end
 
 end
