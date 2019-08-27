@@ -1,0 +1,43 @@
+2019-08-27 UTC 13:32:59.275 [] [info] Starting server at http://localhost:4000/
+2019-08-27 UTC 13:33:28.306 [] [info] POST /api/v1/add_subscription
+2019-08-27 UTC 13:33:28.332 [request_id=Fb7K5bUl61Ar-0cAADtj ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 13:33:28.332 [request_id=Fb7K5bUl61Ar-0cAADtj ] [info] [94madd_subscription/2[0m
+2019-08-27 UTC 13:33:28.397 [request_id=Fb7K5bUl61Ar-0cAADtj ] [info] Sent 200 in 90ms
+2019-08-27 UTC 13:33:58.016 [] [info] POST /api/v1/add_subscription
+2019-08-27 UTC 13:33:58.017 [request_id=Fb7K7J_-AmCgNKwAAANE ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 13:33:58.017 [request_id=Fb7K7J_-AmCgNKwAAANE ] [info] [94madd_subscription/2[0m
+2019-08-27 UTC 13:33:58.019 [request_id=Fb7K7J_-AmCgNKwAAANE ] [info] [33mcreate_subscription/1 :: "27124244422"[0m
+2019-08-27 UTC 13:33:58.140 [request_id=Fb7K7J_-AmCgNKwAAANE ] [info] [32mSubscription created successfully: %TenbewGw.Model.Subscription{__meta__: #Ecto.Schema.Metadata<:loaded, "subscriptions">, id: "8cc97b86-6529-43a2-9657-dcbf95a9f464", inserted_at: ~N[2019-08-27 13:33:58], msisdn: "27124244422", payments: #Ecto.Association.NotLoaded<association :payments is not loaded>, services: nil, status: "active", updated_at: ~N[2019-08-27 13:33:58], validated: nil}[0m
+2019-08-27 UTC 13:33:58.140 [request_id=Fb7K7J_-AmCgNKwAAANE ] [info] Sent 200 in 123ms
+2019-08-27 UTC 13:35:28.353 [] [info] Starting server at http://localhost:4000/
+2019-08-27 UTC 13:35:31.551 [] [info] POST /api/v1/add_subscription
+2019-08-27 UTC 13:35:31.574 [request_id=Fb7LAmcd-TAr-0cAACgj ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 13:35:31.574 [request_id=Fb7LAmcd-TAr-0cAACgj ] [info] [94madd_subscription/2[0m
+2019-08-27 UTC 13:35:31.644 [request_id=Fb7LAmcd-TAr-0cAACgj ] [info] Sent 200 in 92ms
+2019-08-27 UTC 13:35:40.712 [] [info] POST /api/v1/add_subscription
+2019-08-27 UTC 13:35:40.712 [request_id=Fb7LBIkipMCgNKwAABSk ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 13:35:40.712 [request_id=Fb7LBIkipMCgNKwAABSk ] [info] [94madd_subscription/2[0m
+2019-08-27 UTC 13:35:40.715 [request_id=Fb7LBIkipMCgNKwAABSk ] [info] [33mcreate_subscription/1 :: "27124240122"[0m
+2019-08-27 UTC 13:35:40.887 [request_id=Fb7LBIkipMCgNKwAABSk ] [info] [32mSubscription created successfully: %TenbewGw.Model.Subscription{__meta__: #Ecto.Schema.Metadata<:loaded, "subscriptions">, id: "843ea094-c804-4ec2-89ee-b3fb614d8e39", inserted_at: ~N[2019-08-27 13:35:40], msisdn: "27124240122", payments: #Ecto.Association.NotLoaded<association :payments is not loaded>, services: nil, status: "active", updated_at: ~N[2019-08-27 13:35:40], validated: nil}[0m
+2019-08-27 UTC 13:35:40.887 [request_id=Fb7LBIkipMCgNKwAABSk ] [info] Sent 200 in 174ms
+2019-08-27 UTC 13:40:34.019 [] [info] Starting server at http://localhost:4000/
+2019-08-27 UTC 13:40:36.166 [] [info] POST /api/v1/add_subscription
+2019-08-27 UTC 13:40:36.192 [request_id=Fb7LSVOSVpEr-0cAAAsi ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 13:40:36.192 [request_id=Fb7LSVOSVpEr-0cAAAsi ] [info] [94madd_subscription/2[0m
+2019-08-27 UTC 13:40:36.252 [request_id=Fb7LSVOSVpEr-0cAAAsi ] [info] Sent 200 in 85ms
+2019-08-27 UTC 13:40:43.425 [] [info] POST /api/v1/add_subscription
+2019-08-27 UTC 13:40:43.426 [request_id=Fb7LSwRB0kigNKwAACEj ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 13:40:43.426 [request_id=Fb7LSwRB0kigNKwAACEj ] [info] [94madd_subscription/2[0m
+2019-08-27 UTC 13:40:43.654 [request_id=Fb7LSwRB0kigNKwAACEj ] [info] [32mSubscription created successfully: %TenbewGw.Model.Subscription{__meta__: #Ecto.Schema.Metadata<:loaded, "subscriptions">, id: "9ab16c4f-bff4-45f9-9ef8-ebdbc91ab2a7", inserted_at: ~N[2019-08-27 13:40:43], msisdn: "27100240122", payments: #Ecto.Association.NotLoaded<association :payments is not loaded>, services: "testing", status: "active", updated_at: ~N[2019-08-27 13:40:43], validated: nil}[0m
+2019-08-27 UTC 13:40:43.657 [request_id=Fb7LSwRB0kigNKwAACEj ] [info] Sent 200 in 231ms
+2019-08-27 UTC 13:41:37.583 [] [info] POST /api/v1/add_subscription
+2019-08-27 UTC 13:41:37.584 [request_id=Fb7LV6BUVks_2QUAABcE ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 13:41:37.584 [request_id=Fb7LV6BUVks_2QUAABcE ] [info] [94madd_subscription/2[0m
+2019-08-27 UTC 13:41:37.586 [request_id=Fb7LV6BUVks_2QUAABcE ] [info] Sent 200 in 2ms
+2019-08-27 UTC 13:42:51.110 [] [info] GET /CancelSub
+2019-08-27 UTC 13:42:51.110 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] [94mGET /CancelSub :: msisdn: 27100240122[0m
+2019-08-27 UTC 13:42:51.110 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] [33mvalid_parameters/1[0m
+2019-08-27 UTC 13:42:51.110 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] [33mvalid_msisdn_format/1[0m
+2019-08-27 UTC 13:42:51.119 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] [33mvalid_msisdn_existance/1[0m
+2019-08-27 UTC 13:42:51.123 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] [31mValidation Error: invalid msisdn, already subscribed[0m
+2019-08-27 UTC 13:42:51.128 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] Sent 200 in 17ms

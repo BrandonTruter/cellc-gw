@@ -194,8 +194,6 @@ defmodule TenbewGw.Endpoint do
   end
 
 
-
-
   # STEP 1 - Receive add subscriber request
   def valid_parameters(map) when is_map(map) do
     "valid_parameters/1" |> color_info(:yellow)
@@ -337,9 +335,8 @@ defmodule TenbewGw.Endpoint do
 
 
   def add_sub(conn, opts) do
-    # 1. Add Subscriber.
-      # This happens when a subscriber through QQ portal ask to subscribe for service(s). QQ portal calls Tenbew gateway for downstream processing
-      # https://156.38.208.218/addsub.php?waspTID=QQChina&serviceID=00&msisdn=XXXX&mn= CellC_ZA
+    # This happens when a subscriber through QQ portal ask to subscribe for service(s).
+    # QQ portal calls Tenbew gateway for downstream processing
     map = req_query_params(conn)
     Logger.metadata()[:request_id]
     msisdn = Map.get(map, "msisdn", "")
@@ -394,11 +391,9 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-
   def charge_sub(conn, opts) do
-    # 2. Charge Subscriber.
-       # This is a call from Tenbew to charge the subscriber for usage of the content. Tenbew then sends the call to Cell C after basic validation
-       # https://156.38.208.218/ChargeSub? waspTID=QQChina&serviceID=00&msisdn=XXXX&mn=CellC_ZA
+    # This is a call from Tenbew to charge the subscriber for usage of the content.
+    # Tenbew then sends the call to Cell C after basic validation
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
     "GET /ChargeSub" |> color_info(:lightblue)
@@ -449,11 +444,9 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-
   def cancel_sub(conn, opts) do
-    # 3. Cancel Subscription.
-        # This takes place when the subscriber no longer wants subscribe for the content. They initiate the cancel subscription from QQ portal
-        # https://156.38.208.218/Cancelsub.php?waspTID=QQChina&serviceID=00&msisdn=XXXX&mn=CellC_ZA
+    # This takes place when the subscriber no longer wants subscribe for the content.
+    # They initiate the cancel subscription from QQ portal
     map = req_query_params(conn)
     Logger.metadata()[:request_id]
     msisdn = Map.get(map, "msisdn", "")
@@ -495,8 +488,6 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-  # TODO - UPDATE
-
   defp create_subscription(msisdn, status \\ "pending") do
     "create_subscription/1 :: #{inspect(msisdn)}" |> color_info(:yellow)
     attrs = %{msisdn: "#{msisdn}", status: status || "pending"}
@@ -525,34 +516,6 @@ defmodule TenbewGw.Endpoint do
     e -> "update_subscription_status/2 exception: #{inspect e}" |> color_info(:red)
   end
 
-  # TODO - REMOVE
-
-  def doi_subscriptions(conn, _opts) do
-    endpoint = "#{doi_api_url()}/subscriptions"
-    headers = [{"Content-Type", "application/json"}]
-    # {:ok, status, _, client_ref} = :hackney.request(:get, endpoint, headers, "", [])
-    # {:ok, body} = :hackney.body(client_ref)
-    # {:ok, api_response} = Poison.decode(body)
-    response =
-      case request(endpoint, :get, headers, "", 20) do
-        {200, body} -> body
-        _ -> "error"
-      end
-    "RESPONSE : #{inspect(response)}" |> color_info(:green)
-
-    encoded_response =
-      if is_binary(response) do
-        %{error: "failed to call DOI API"}
-      else
-        Poison.encode!(response)
-      end
-
-    conn
-    |> put_resp_content_type(@content_type)
-    |> send_resp(200, encoded_response)
-  end
-
-
   def add_subscription(conn, _opts) do
     map = req_body_map(conn)
     status = map |> Map.get("status")
@@ -566,9 +529,25 @@ defmodule TenbewGw.Endpoint do
         if Subscription.exists?(msisdn) do
           %{error: "Subscription already exists"}
         else
-          case create_subscription(msisdn, status) do
-            {:ok, subscription} -> %{success: formatted_subscriber(subscription)}
-            {:error, error} -> %{error: "#{inspect(error)}"}
+          attrs = %{
+            msisdn: msisdn,
+            services: "testing",
+            status: status || "pending"
+          }
+          case Subscription.create_subscription(attrs) do
+            {:ok, subscription} ->
+              "Subscription created successfully: #{inspect(subscription)}" |> color_info(:green)
+              %{success: formatted_subscriber(subscription)}
+
+            {:error, %Ecto.Changeset{} = changeset} ->
+              errors = changeset_errors(changeset)
+              "Subscription Error: #{inspect(errors)}" |> color_info(:red)
+              %{error: errors}
+
+            {:error, error} ->
+              "Subscription Error: #{inspect(error)}" |> color_info(:red)
+              %{error: error}
+
             _ -> %{error: "failed to create subscription"}
           end
         end
@@ -606,7 +585,7 @@ defmodule TenbewGw.Endpoint do
 
             {:error, %Ecto.Changeset{} = changeset} ->
               errors = inspect(changeset_errors(changeset))
-              "Payment Error:#{errors}" |> color_info(:red)
+              "Payment Error: #{errors}" |> color_info(:red)
               %{error: errors}
 
             {:error, error} ->
@@ -626,7 +605,6 @@ defmodule TenbewGw.Endpoint do
   rescue e ->
     "add_payment/2 exception: #{inspect e}" |> color_info(:red)
   end
-
 
   def get_subscription(conn, _opts) do
     params = req_query_params(conn)
@@ -678,6 +656,32 @@ defmodule TenbewGw.Endpoint do
     "get_payment/2 exception: #{inspect e}" |> color_info(:red)
   end
 
+  # TODO - REMOVE
+  def doi_subscriptions(conn, _opts) do
+    endpoint = "#{doi_api_url()}/subscriptions"
+    headers = [{"Content-Type", "application/json"}]
+    # {:ok, status, _, client_ref} = :hackney.request(:get, endpoint, headers, "", [])
+    # {:ok, body} = :hackney.body(client_ref)
+    # {:ok, api_response} = Poison.decode(body)
+    response =
+      case request(endpoint, :get, headers, "", 20) do
+        {200, body} -> body
+        _ -> "error"
+      end
+    "RESPONSE : #{inspect(response)}" |> color_info(:green)
+
+    encoded_response =
+      if is_binary(response) do
+        %{error: "failed to call DOI API"}
+      else
+        Poison.encode!(response)
+      end
+
+    conn
+    |> put_resp_content_type(@content_type)
+    |> send_resp(200, encoded_response)
+  end
+
   # Helpers
 
   defp formatted_subscriber(subscription) do
@@ -685,9 +689,9 @@ defmodule TenbewGw.Endpoint do
       id: subscription.id,
       msisdn: subscription.msisdn,
       status: subscription.status,
-      services: subscription.services
-      # date: subscription.updated_at || subscription.inserted_at,
-      # is_validated: (if subscription.validated == true, do: "Yes", else: "No")
+      services: subscription.services,
+      date: subscription.updated_at || subscription.inserted_at,
+      is_validated: (if subscription.validated == true, do: "Yes", else: "No")
     }
   end
 
