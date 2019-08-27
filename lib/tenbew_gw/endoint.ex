@@ -638,9 +638,9 @@ defmodule TenbewGw.Endpoint do
       if empty?(msisdn) do
         %{error: "msisdn is required"}
       else
-        if Payment.exists?(msisdn) do
-          %{error: "payment already exists"}
-        else
+        # if Payment.exists?(msisdn) do
+          # %{error: "payment already exists"}
+        # else
           if Subscription.exists?(msisdn) do
             subscriber = Subscription.get_by_msisdn(msisdn)
             status = Map.get(map, "status", "paying")
@@ -673,7 +673,7 @@ defmodule TenbewGw.Endpoint do
           else
             %{error: "no subscriber found"}
           end
-        end
+        # end
       end
 
     r_json(~m(payment))
@@ -721,7 +721,6 @@ defmodule TenbewGw.Endpoint do
       is_paid: (if payment.paid == true, do: "Yes", else: "No")
     }
   end
-
 
   defp changeset_errors(changeset) do
     field_name = get_field_name(changeset)

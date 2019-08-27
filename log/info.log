@@ -1,0 +1,24 @@
+2019-08-27 UTC 01:05:54.198 [] [info] Starting server at http://localhost:4000/
+2019-08-27 UTC 01:05:58.144 [] [info] GET /get_payment
+2019-08-27 UTC 01:05:58.165 [request_id=Fb6iGzcqjwCUlSgAADti ] [info] [94mget_payment/2 :: params: %{"msisdn" => "27124242247"}[0m
+2019-08-27 UTC 01:05:58.213 [request_id=Fb6iGzcqjwCUlSgAADti ] [info] Sent 200 in 68ms
+2019-08-27 UTC 01:06:19.245 [] [info] POST /api/v1/add_payment
+2019-08-27 UTC 01:06:19.257 [request_id=Fb6iICDkqYgFOZUAAB-D ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 01:06:19.257 [request_id=Fb6iICDkqYgFOZUAAB-D ] [info] [94madd_payment/2 :: msisdn: 27124240207[0m
+2019-08-27 UTC 01:06:19.259 [request_id=Fb6iICDkqYgFOZUAAB-D ] [info] Sent 200 in 13ms
+2019-08-27 UTC 01:06:27.357 [] [info] POST /api/v1/add_paymentl
+2019-08-27 UTC 01:06:27.358 [request_id=Fb6iIgRmR9hDooYAADvC ] [info] [31mNOT FOUND[0m
+2019-08-27 UTC 01:06:27.358 [request_id=Fb6iIgRmR9hDooYAADvC ] [info] Sent 404 in 190µs
+2019-08-27 UTC 01:07:20.611 [] [info] GET /get_payment
+2019-08-27 UTC 01:07:20.612 [request_id=Fb6iLmqWCCAjrEsAADvi ] [info] [94mget_payment/2 :: params: %{"msisdn" => "27124242247"}[0m
+2019-08-27 UTC 01:07:20.613 [request_id=Fb6iLmqWCCAjrEsAADvi ] [info] Sent 200 in 1ms
+2019-08-27 UTC 01:09:55.417 [] [info] POST /api/v1/add_payment
+2019-08-27 UTC 01:09:55.417 [request_id=Fb6iUnW6GmA5UtgAADwC ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 01:09:55.417 [request_id=Fb6iUnW6GmA5UtgAADwC ] [info] [94madd_payment/2 :: msisdn: 0724244223[0m
+2019-08-27 UTC 01:09:55.419 [request_id=Fb6iUnW6GmA5UtgAADwC ] [info] Sent 200 in 1ms
+2019-08-27 UTC 01:10:08.948 [] [info] Starting server at http://localhost:4000/
+2019-08-27 UTC 01:10:20.470 [] [info] POST /api/v1/add_payment
+2019-08-27 UTC 01:10:20.499 [request_id=Fb6iWEr8o6Ar-0cAAB_h ] [info] [33mvalue empty from read_body[0m
+2019-08-27 UTC 01:10:20.499 [request_id=Fb6iWEr8o6Ar-0cAAB_h ] [info] [94madd_payment/2 :: msisdn: 0724244223[0m
+2019-08-27 UTC 01:10:20.687 [request_id=Fb6iWEr8o6Ar-0cAAB_h ] [info] [32mPayment Success: %TenbewGw.Model.Payment{__meta__: #Ecto.Schema.Metadata<:loaded, "payments">, amount: 900, currency: nil, id: "7a7cfb29-a859-48cf-9c16-a5a97ac150c8", inserted_at: ~N[2019-08-27 01:10:20], msisdn: "0724244223", paid: false, paid_at: nil, service_type: "tester", status: "paying", subscription: #Ecto.Association.NotLoaded<association :subscription is not loaded>, subscription_id: "0bd326f5-a452-4bbf-8034-a3c87568beff", updated_at: ~N[2019-08-27 01:10:20]}[0m
+2019-08-27 UTC 01:10:20.699 [request_id=Fb6iWEr8o6Ar-0cAAB_h ] [info] Sent 200 in 229ms
