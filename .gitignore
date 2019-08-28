@@ -22,3 +22,8 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 tenbew_gw-*.tar
 
+dev_error_logger.txt
+
+*.DS_Store
+
+/log/*

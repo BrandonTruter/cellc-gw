@@ -114,6 +114,7 @@ defmodule TenbewGw.Endpoint do
 
             "/get_payment" -> {__MODULE__, :get_payment, ["general"]}
             "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
+
             "/doi/subscriptions" -> {__MODULE__, :doi_subscriptions, ["general"]}
             _ -> nil
           end
@@ -122,6 +123,10 @@ defmodule TenbewGw.Endpoint do
           case route do
             "/add_subscription" -> {__MODULE__, :add_subscription, ["general"]}
             "/add_payment" -> {__MODULE__, :add_payment, ["general"]}
+
+            "/cellc/add" -> {__MODULE__, :cellc_add, ["general"]}
+            "/cellc/charge" -> {__MODULE__, :cellc_charge, ["general"]}
+            "/cellc/cancel" -> {__MODULE__, :cellc_cancel, ["general"]}
             _ -> nil
           end
 
@@ -770,5 +775,88 @@ defmodule TenbewGw.Endpoint do
       502 -> "MSISDN Already Subscribed"
     end
   end
+
+  # endpoints to test DOI API via Rails App
+
+  def cellc_request(method, endpoint, payload, timeout) do
+    try do
+      headers = [{"Content-Type", "application/json"}]
+
+      base_url = doi_api_url() <> "/" <> endpoint
+
+      case request(base_url, method, headers, payload, timeout) do
+        {200, response} ->
+          response
+
+        {st, error} ->
+          "DOI Error (#{st}): #{inspect(error)}" |> color_info(:red)
+          error
+      end
+    rescue
+      e -> "cellc_request/5 exception: #{inspect e}" |> color_info(:red)
+    end
+  end
+
+  def cellc_add(conn, _opts) do
+    func = "cellc_add/2 ::"
+    map = req_body_map(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    "#{func} params: #{inspect(map)}" |> color_info(:yellow)
+
+    params = %{"msisdn" => msisdn}
+    payload = Poison.encode!(params)
+    response = cellc_request(:post, "add_sub", payload, 30)
+    "#{func} response: #{inspect(response)}" |> color_info(:green)
+
+    r_json(~m(response))
+  rescue e ->
+    "cellc_add/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
+  def cellc_charge(conn, _opts) do
+    func = "cellc_charge/2 ::"
+    map = req_body_map(conn)
+    "#{func} params: #{inspect(map)}" |> color_info(:yellow)
+
+    headers = [{"Content-Type", "application/json"}]
+    endpoint = doi_api_url() <> "/charge_sub"
+    msisdn = Map.get(map, "msisdn", "")
+    params = %{"msisdn" => msisdn}
+
+    response =
+      case request("#{endpoint}", :post, headers, params, 20) do
+        {200, body} -> body
+        _ -> "error"
+      end
+
+    "#{func} response: #{inspect(response)}" |> color_info(:green)
+
+    r_json(~m(response))
+  rescue e ->
+    "cellc_charge/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
+  def cellc_cancel(conn, _opts) do
+    func = "cellc_cancel/2 ::"
+    map = req_body_map(conn)
+    "#{func} params: #{inspect(map)}" |> color_info(:yellow)
+
+    endpoint = "#{doi_api_url()}/cancel_sub"
+    headers = [{"Content-Type", "application/json"}]
+    # response =
+    #   case request(endpoint, :get, headers, "", 20) do
+    #     {200, body} -> body
+    #     _ -> "error"
+    #   end
+    {:ok, status, _, client_ref} = :hackney.request(:get, endpoint, headers, "", [])
+    {:ok, body} = :hackney.body(client_ref)
+    {:ok, response} = Poison.decode(body)
+    "#{func} response: #{inspect(response)}" |> color_info(:green)
+
+    r_json(~m(response))
+  rescue e ->
+    "cellc_cancel/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
 
 end
