@@ -41,3 +41,64 @@
 2019-08-27 UTC 13:42:51.119 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] [33mvalid_msisdn_existance/1[0m
 2019-08-27 UTC 13:42:51.123 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] [31mValidation Error: invalid msisdn, already subscribed[0m
 2019-08-27 UTC 13:42:51.128 [request_id=Fb7LaL7eNhS9MFUAACFD ] [info] Sent 200 in 17ms
+2019-08-28 UTC 17:09:36.576 [] [info] Starting server at http://localhost:4000/
+2019-08-28 UTC 17:09:58.502 [] [info] GET /addsub.php
+2019-08-28 UTC 17:09:58.525 [request_id=Fb8lSsqLlZjFBQAAAA-B ] [info] [94mGET /addsub :: msisdn: 27124242247[0m
+2019-08-28 UTC 17:09:58.525 [request_id=Fb8lSsqLlZjFBQAAAA-B ] [info] [33mvalid_parameters/1[0m
+2019-08-28 UTC 17:09:58.525 [request_id=Fb8lSsqLlZjFBQAAAA-B ] [info] [33mvalid_msisdn_format/1[0m
+2019-08-28 UTC 17:09:58.531 [request_id=Fb8lSsqLlZjFBQAAAA-B ] [info] [33mvalid_msisdn_existance/1[0m
+2019-08-28 UTC 17:09:58.589 [request_id=Fb8lSsqLlZjFBQAAAA-B ] [info] [34mURL "http://localhost:3000/api/v1/subscriptions" BODY %{"subscription" => %{"message" => "gateway subscription", "msisdn" => "27124242247", "reference" => "testing api", "service" => "gateway", "state" => "active"}}[0m
+2019-08-28 UTC 17:09:58.674 [request_id=Fb8lSsqLlZjFBQAAAA-B ] [info] [31mhackney rescue %MatchError{term: {:error, :econnrefused}}[0m
+2019-08-28 UTC 17:09:58.674 [request_id=Fb8lSsqLlZjFBQAAAA-B ] [info] [32mRESPONSE : "general error"[0m
+2019-08-28 UTC 17:09:58.678 [] [info] [31m%{arity: 5, error: "%MatchError{term: {:error, :econnrefused}}", file: "lib/util/request.ex", function: "request", line: 40, module: "Elixir.Util.WebRequest"}[0m
+2019-08-28 UTC 17:09:58.680 [request_id=Fb8lSsqLlZjFBQAAAA-B ] [info] Sent 200 in 178ms
+2019-08-28 UTC 17:10:15.046 [] [info] GET /AddSub
+2019-08-28 UTC 17:10:15.047 [request_id=Fb8lTqSPqKhhr0YAAA_B ] [info] [94mGET /addsub :: msisdn: 27124242247[0m
+2019-08-28 UTC 17:10:15.047 [request_id=Fb8lTqSPqKhhr0YAAA_B ] [info] [33mvalid_parameters/1[0m
+2019-08-28 UTC 17:10:15.047 [request_id=Fb8lTqSPqKhhr0YAAA_B ] [info] [33mvalid_msisdn_format/1[0m
+2019-08-28 UTC 17:10:15.047 [request_id=Fb8lTqSPqKhhr0YAAA_B ] [info] [33mvalid_msisdn_existance/1[0m
+2019-08-28 UTC 17:10:15.053 [request_id=Fb8lTqSPqKhhr0YAAA_B ] [info] [34mURL "http://localhost:3000/api/v1/subscriptions" BODY %{"subscription" => %{"message" => "gateway subscription", "msisdn" => "27124242247", "reference" => "testing api", "service" => "gateway", "state" => "active"}}[0m
+2019-08-28 UTC 17:10:15.056 [request_id=Fb8lTqSPqKhhr0YAAA_B ] [info] [31mhackney rescue %MatchError{term: {:error, :econnrefused}}[0m
+2019-08-28 UTC 17:10:15.056 [request_id=Fb8lTqSPqKhhr0YAAA_B ] [info] [32mRESPONSE : "general error"[0m
+2019-08-28 UTC 17:10:15.056 [request_id=Fb8lTqSPqKhhr0YAAA_B ] [info] Sent 200 in 9ms
+2019-08-28 UTC 17:10:15.056 [] [info] [31m%{arity: 5, error: "%MatchError{term: {:error, :econnrefused}}", file: "lib/util/request.ex", function: "request", line: 40, module: "Elixir.Util.WebRequest"}[0m
+2019-08-28 UTC 17:10:19.284 [] [info] GET /AsddSub
+2019-08-28 UTC 17:10:19.284 [request_id=Fb8lT6EoeBDlpLgAAA_h ] [info] [31mNOT FOUND[0m
+2019-08-28 UTC 17:10:19.284 [request_id=Fb8lT6EoeBDlpLgAAA_h ] [info] Sent 404 in 154µs
+2019-08-28 UTC 17:10:21.972 [] [info] GET /AddSub
+2019-08-28 UTC 17:10:21.972 [request_id=Fb8lUEFYazj83eYAABAB ] [info] [94mGET /addsub :: msisdn: 27124242247[0m
+2019-08-28 UTC 17:10:21.972 [request_id=Fb8lUEFYazj83eYAABAB ] [info] [33mvalid_parameters/1[0m
+2019-08-28 UTC 17:10:21.972 [request_id=Fb8lUEFYazj83eYAABAB ] [info] [33mvalid_msisdn_format/1[0m
+2019-08-28 UTC 17:10:21.972 [request_id=Fb8lUEFYazj83eYAABAB ] [info] [33mvalid_msisdn_existance/1[0m
+2019-08-28 UTC 17:10:21.974 [request_id=Fb8lUEFYazj83eYAABAB ] [info] [34mURL "http://localhost:3000/api/v1/subscriptions" BODY %{"subscription" => %{"message" => "gateway subscription", "msisdn" => "27124242247", "reference" => "testing api", "service" => "gateway", "state" => "active"}}[0m
+2019-08-28 UTC 17:10:21.975 [request_id=Fb8lUEFYazj83eYAABAB ] [info] [31mhackney rescue %MatchError{term: {:error, :econnrefused}}[0m
+2019-08-28 UTC 17:10:21.976 [request_id=Fb8lUEFYazj83eYAABAB ] [info] [32mRESPONSE : "general error"[0m
+2019-08-28 UTC 17:10:21.976 [request_id=Fb8lUEFYazj83eYAABAB ] [info] Sent 200 in 3ms
+2019-08-28 UTC 17:10:21.976 [] [info] [31m%{arity: 5, error: "%MatchError{term: {:error, :econnrefused}}", file: "lib/util/request.ex", function: "request", line: 40, module: "Elixir.Util.WebRequest"}[0m
+2019-08-28 UTC 17:10:27.157 [] [info] GET /ChargeSub
+2019-08-28 UTC 17:10:27.157 [request_id=Fb8lUXZpAlDVsKMAABAh ] [info] [94mGET /ChargeSub :: msisdn: 27124242247[0m
+2019-08-28 UTC 17:10:27.157 [request_id=Fb8lUXZpAlDVsKMAABAh ] [info] [33mvalid_parameters/1[0m
+2019-08-28 UTC 17:10:27.158 [request_id=Fb8lUXZpAlDVsKMAABAh ] [info] [33mvalid_msisdn_format/1[0m
+2019-08-28 UTC 17:10:27.158 [request_id=Fb8lUXZpAlDVsKMAABAh ] [info] [33mvalid_msisdn_existance/1[0m
+2019-08-28 UTC 17:10:27.163 [request_id=Fb8lUXZpAlDVsKMAABAh ] [info] [34mURL "http://localhost:3000/api/v1/subscriptions" BODY %{"subscription" => %{"message" => "gateway subscription", "msisdn" => "27124242247", "reference" => "testing api", "service" => "gateway", "state" => "active"}}[0m
+2019-08-28 UTC 17:10:27.166 [request_id=Fb8lUXZpAlDVsKMAABAh ] [info] [31mhackney rescue %MatchError{term: {:error, :econnrefused}}[0m
+2019-08-28 UTC 17:10:27.166 [request_id=Fb8lUXZpAlDVsKMAABAh ] [info] [32mRESPONSE : "general error"[0m
+2019-08-28 UTC 17:10:27.166 [request_id=Fb8lUXZpAlDVsKMAABAh ] [info] Sent 200 in 9ms
+2019-08-28 UTC 17:10:27.166 [] [info] [31m%{arity: 5, error: "%MatchError{term: {:error, :econnrefused}}", file: "lib/util/request.ex", function: "request", line: 40, module: "Elixir.Util.WebRequest"}[0m
+2019-08-28 UTC 17:10:30.820 [] [info] GET /CancelSub
+2019-08-28 UTC 17:10:30.820 [request_id=Fb8lUlDFGDCYj7oAAAqC ] [info] [94mGET /CancelSub :: msisdn: 27100240122[0m
+2019-08-28 UTC 17:10:30.820 [request_id=Fb8lUlDFGDCYj7oAAAqC ] [info] [33mvalid_parameters/1[0m
+2019-08-28 UTC 17:10:30.820 [request_id=Fb8lUlDFGDCYj7oAAAqC ] [info] [33mvalid_msisdn_format/1[0m
+2019-08-28 UTC 17:10:30.820 [request_id=Fb8lUlDFGDCYj7oAAAqC ] [info] [33mvalid_msisdn_existance/1[0m
+2019-08-28 UTC 17:10:30.825 [request_id=Fb8lUlDFGDCYj7oAAAqC ] [info] [31mValidation Error: invalid msisdn, already subscribed[0m
+2019-08-28 UTC 17:10:30.825 [request_id=Fb8lUlDFGDCYj7oAAAqC ] [info] Sent 200 in 4ms
+2019-08-28 UTC 17:10:41.826 [] [info] GET /CancelSub
+2019-08-28 UTC 17:10:41.826 [request_id=Fb8lVOC7iCjAhjcAABBB ] [info] [94mGET /CancelSub :: msisdn: 27124242247[0m
+2019-08-28 UTC 17:10:41.826 [request_id=Fb8lVOC7iCjAhjcAABBB ] [info] [33mvalid_parameters/1[0m
+2019-08-28 UTC 17:10:41.826 [request_id=Fb8lVOC7iCjAhjcAABBB ] [info] [33mvalid_msisdn_format/1[0m
+2019-08-28 UTC 17:10:41.826 [request_id=Fb8lVOC7iCjAhjcAABBB ] [info] [33mvalid_msisdn_existance/1[0m
+2019-08-28 UTC 17:10:41.828 [request_id=Fb8lVOC7iCjAhjcAABBB ] [info] [34mURL "http://localhost:3000/api/v1/subscriptions" BODY %{"subscription" => %{"message" => "gateway subscription", "msisdn" => "27124242247", "reference" => "testing api", "service" => "gateway", "state" => "active"}}[0m
+2019-08-28 UTC 17:10:41.830 [request_id=Fb8lVOC7iCjAhjcAABBB ] [info] [31mhackney rescue %MatchError{term: {:error, :econnrefused}}[0m
+2019-08-28 UTC 17:10:41.830 [request_id=Fb8lVOC7iCjAhjcAABBB ] [info] [32mRESPONSE : "general error"[0m
+2019-08-28 UTC 17:10:41.830 [request_id=Fb8lVOC7iCjAhjcAABBB ] [info] Sent 200 in 4ms
+2019-08-28 UTC 17:10:41.830 [] [info] [31m%{arity: 5, error: "%MatchError{term: {:error, :econnrefused}}", file: "lib/util/request.ex", function: "request", line: 40, module: "Elixir.Util.WebRequest"}[0m

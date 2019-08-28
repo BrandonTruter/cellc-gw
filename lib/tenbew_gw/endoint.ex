@@ -107,6 +107,7 @@ defmodule TenbewGw.Endpoint do
       case conn.method do
         "GET" ->
           case route do
+            "/AddSub" -> {__MODULE__, :add_sub, ["general"]}
             "/addsub.php" -> {__MODULE__, :add_sub, ["general"]}
             "/ChargeSub" -> {__MODULE__, :charge_sub, ["general"]}
             "/CancelSub" -> {__MODULE__, :cancel_sub, ["general"]}
@@ -192,7 +193,6 @@ defmodule TenbewGw.Endpoint do
     "render_error/1, code: #{status}, message: #{inspect(message)}" |> color_info(:red)
     send_resp(conn, status, "#{err_msg}")
   end
-
 
   # STEP 1 - Receive add subscriber request
   def valid_parameters(map) when is_map(map) do
@@ -296,7 +296,7 @@ defmodule TenbewGw.Endpoint do
         "payload" => params,
         "status" => "pending",
         "error" => "#{response}",
-        "message" => "failed to call DOI API"
+        "message" => "error calling DOI API"
       }
     else
       %{
@@ -338,7 +338,7 @@ defmodule TenbewGw.Endpoint do
     # This happens when a subscriber through QQ portal ask to subscribe for service(s).
     # QQ portal calls Tenbew gateway for downstream processing
     map = req_query_params(conn)
-    Logger.metadata()[:request_id]
+    # Logger.metadata()[:request_id]
     msisdn = Map.get(map, "msisdn", "")
     "GET /addsub :: msisdn: #{msisdn}" |> color_info(:lightblue)
 
@@ -396,7 +396,7 @@ defmodule TenbewGw.Endpoint do
     # Tenbew then sends the call to Cell C after basic validation
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
-    "GET /ChargeSub" |> color_info(:lightblue)
+    "GET /ChargeSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
 
     valid? =
       if valid_parameters(map) do
@@ -416,10 +416,11 @@ defmodule TenbewGw.Endpoint do
     if valid? do
       response = call_cell_c(map)
       if response["status"] == "pending" do
-        update_subscription_details(msisdn, response)
-        conn
-        |> put_resp_content_type(@content_type)
-        |> send_resp(200, response)
+        if is_nil(response["error"]), do: update_subscription_details(msisdn, response)
+
+        status = response["code"]
+        message = response["message"]
+        r_json(~m(status message)s)
       else
         raise ApiError, message: response["error"]
       end
@@ -448,7 +449,6 @@ defmodule TenbewGw.Endpoint do
     # This takes place when the subscriber no longer wants subscribe for the content.
     # They initiate the cancel subscription from QQ portal
     map = req_query_params(conn)
-    Logger.metadata()[:request_id]
     msisdn = Map.get(map, "msisdn", "")
     "GET /CancelSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
 
@@ -460,16 +460,24 @@ defmodule TenbewGw.Endpoint do
         false
       end
 
+    response = call_cell_c(map)
+
+    doi_resp_code =
+      if is_nil(response["error"]), do: 200, else: response["code"]
+
+    doi_resp_msg =
+      if is_nil(response["error"]), do: "cancelled successfully", else: response["message"]
+
     status =
       case is_valid? do
-        true -> 200
+        true -> doi_resp_code
         false -> 500
         _ -> 500
       end
 
     message =
       case is_valid? do
-        true -> "cancelled successfully"
+        true -> doi_resp_msg
         false -> "cancellation failed"
         _ -> "cancellation failed"
       end
