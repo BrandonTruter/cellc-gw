@@ -839,18 +839,22 @@ defmodule TenbewGw.Endpoint do
   def cellc_cancel(conn, _opts) do
     func = "cellc_cancel/2 ::"
     map = req_body_map(conn)
+    msisdn = Map.get(map, "msisdn", "")
     "#{func} params: #{inspect(map)}" |> color_info(:yellow)
-
-    endpoint = "#{doi_api_url()}/cancel_sub"
-    headers = [{"Content-Type", "application/json"}]
+    # endpoint = "#{doi_api_url()}/cancel_sub"
+    # headers = [{"Content-Type", "application/json"}]
     # response =
     #   case request(endpoint, :get, headers, "", 20) do
     #     {200, body} -> body
     #     _ -> "error"
     #   end
-    {:ok, status, _, client_ref} = :hackney.request(:get, endpoint, headers, "", [])
-    {:ok, body} = :hackney.body(client_ref)
-    {:ok, response} = Poison.decode(body)
+
+    # {:ok, status, _, client_ref} = :hackney.request(:get, endpoint, headers, "", [])
+    # {:ok, body} = :hackney.body(client_ref)
+    # {:ok, response} = Poison.decode(body)
+
+    payload = %{"msisdn" => msisdn} |> Poison.encode!()
+    response = cellc_request(:get, "cancel_sub", payload, 20)
     "#{func} response: #{inspect(response)}" |> color_info(:green)
 
     r_json(~m(response))

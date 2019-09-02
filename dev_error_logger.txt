@@ -6,3 +6,4 @@
 2019-08-28 19:06:50} %{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: <\", token: \"<\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}
 2019-08-28 19:08:36} %{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: <\", token: \"<\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}
 2019-08-28 19:09:05} %{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: <\", token: \"<\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}
+2019-08-29 14:53:50} %{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: <\", token: \"<\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}
