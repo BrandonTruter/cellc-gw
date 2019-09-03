@@ -258,69 +258,74 @@ defmodule TenbewGw.Endpoint do
     false
   end
 
-  # TODO
   # STEP 4 - Call up Cell C DOI Service
-  def call_cell_c(map) do
-    # The DOI service (double opt in) is a legal requirement. It allows the subscriber to confirm that they have indeed made the decision to subscriber.
+  def call_cell_c(endpoint, map) do
+    # The DOI service (double opt in) is a legal requirement.
+    # It allows the subscriber to confirm that they have indeed made the decision to subscriber.
     # When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
     # If the MSISDN is valid, Cell C returns a message that the subscriber is pending.
     # Otherwise may reject the request because the subscriber is either not a Cell C subscriber or other reasons.
-    # payload = %{
-    #   "msisdn" => Map.get(map, "msisdn", ""),
-    #   "waspTID" => Map.get(map, "waspTID", ""),
-    #   "serviceID" => Map.get(map, "serviceID", ""),
-    #   "mn" => Map.get(map, "mn", "")
-    # } |> Jason.encode!
-    # headers = [ {"Authorization", "Token token=PsmmvKBqQDOaWwEsPpOCYMsy"} ]
-    headers = [{"Content-Type", "application/json"}]
-    endpoint = doi_api_url() <> "/subscriptions"
     msisdn = Map.get(map, "msisdn", "")
-    params = %{
-      "subscription" => %{
-        "msisdn" => msisdn,
-        "state" => "active",
-        "service" => "gateway",
-        "reference" => "testing api",
-        "message" => "gateway subscription"
-      }
-    } # |> Jason.encode!
+    params = %{ "msisdn" => msisdn }
+    payload = Poison.encode!(params)
+    base_url = doi_api_url() <> "/" <> endpoint
+    headers = [{"Content-Type", "application/json"}]
+    method = if endpoint == "cancel_sub", do: :get, else: :post
+
+    unless endpoint in ["add_sub", "charge_sub", "cancel_sub"] do
+      raise ApiError, message: "invalid endpoint, #{endpoint} not support", status: 501
+    end
 
     response =
-      case request(endpoint, :post, headers, params, 30) do
-        {200, body} -> body
-        {:error, :econnrefused} -> "connection error"
-        {:econnrefused, error} -> "connection error: #{error}"
-        _ -> "general error"
+      case request(base_url, method, headers, payload, 30) do
+        {200, response} -> response
+
+        {st, error} -> "code: #{st}, message: #{error}"
+          # "Error (#{st}): #{inspect(error)}"
+
+        {:error, :econnrefused} -> "connection error: econnrefused"
+
+        {:econnrefused, err} -> "connection error: #{inspect(err)}"
+
+        _ -> "general error calling DOI API with payload: #{payload}"
       end
-    "RESPONSE : #{inspect(response)}" |> color_info(:green)
 
     if is_binary(response) do
+      message = "#{endpoint} request failed, #{inspect(response)}"
+      message |> color_info(:red)
       %{
         "code" => 500,
         "response" => nil,
         "payload" => params,
         "status" => "pending",
-        "error" => "#{response}",
-        "message" => "error calling DOI API"
+        "message" => "#{message}",
+        "error" => %{error: response}
       }
     else
+      message = "#{endpoint} processed successfully, #{inspect(response)}"
+      "#{message}" |> color_info(:green)
+      service_id = response["service_id"]
+      response_message =
+        if endpoint == "cancel_sub", do: "cancelled successfully", else: "serviceID: #{service_id}"
       %{
         "code" => 200,
         "error" => nil,
         "payload" => params,
         "status" => "active",
-        "response" => Poison.decode(response),
-        "message" => "successfully called DOI API"
+        "message" => "#{message}",
+        "response" => %{success: response_message}
       }
     end
-  rescue
-    e in MatchError ->
-      "call_cell_c/1 :: MatchError error : #{inspect e}" |> color_info(:red)
-
-    e in HackneyConnectionError ->
-      "call_cell_c/1 :: HackneyConnectionError error : #{inspect e}" |> color_info(:red)
-
-    e -> "call_cell_c/1 :: exception : #{inspect e}" |> color_info(:red)
+  rescue e ->
+    "call_cell_c/2 :: exception : #{inspect e}" |> color_info(:red)
+    %{
+      "code" => 500,
+      "response" => nil,
+      "payload" => map,
+      "status" => "pending",
+      "message" => "Exception Raised",
+      "error" => %{error: "#{inspect e}"}
+    }
   end
 
   # STEP 5 - Update Database, send code 200 to QQ
@@ -337,7 +342,6 @@ defmodule TenbewGw.Endpoint do
   rescue e ->
     "update_subscription_details/2 exception : #{inspect e}" |> color_info(:red)
   end
-
 
   def add_sub(conn, opts) do
     # This happens when a subscriber through QQ portal ask to subscribe for service(s).
@@ -360,7 +364,7 @@ defmodule TenbewGw.Endpoint do
       raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
     end
     # Step 4
-    doi_response = call_cell_c(map)
+    doi_response = call_cell_c("add_sub", map)
     # unless doi_response["status"] == "pending" do
     #   raise ApiError, message: response["message"] || ""
     # end
@@ -375,7 +379,7 @@ defmodule TenbewGw.Endpoint do
 
     status = if is_success, do: 200, else: doi_response["code"]
 
-    message = if is_success, do: "subscribed successfully", else: doi_response["message"]
+    message = if is_success, do: doi_response["response"], else: doi_response["error"]
 
     r_json(~m(status message)s)
   rescue
@@ -419,16 +423,22 @@ defmodule TenbewGw.Endpoint do
       end
 
     if valid? do
-      response = call_cell_c(map)
-      if response["status"] == "pending" do
-        if is_nil(response["error"]), do: update_subscription_details(msisdn, response)
+      response = call_cell_c("charge_sub", map)
 
+      # if response["status"] == "pending" do
+        if is_nil(response["error"]), do: update_subscription_details(msisdn, response)
+        # message = response["message"]
         status = response["code"]
-        message = response["message"]
+
+        is_success? =
+          if (status == 200 and is_nil(response["error"])), do: true, else: false
+
+        message = if is_success?, do: response["response"], else: response["error"]
+
         r_json(~m(status message)s)
-      else
-        raise ApiError, message: response["error"]
-      end
+      # else
+      #   raise ApiError, message: response["error"]
+      # end
     else
       raise ValidationError, message: "invalid msisdn", status: 502
     end
@@ -460,30 +470,35 @@ defmodule TenbewGw.Endpoint do
     is_valid? =
       if valid_parameters(map) do
         if valid_msisdn_format(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-        if valid_msisdn_existance(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+        if valid_msisdn_existance(msisdn) == false, do: true, else: raise ValidationError, message: "invalid msisdn, not subscribed", status: 502
       else
         false
       end
 
-    response = call_cell_c(map)
+    response = call_cell_c("cancel_sub", map)
 
-    doi_resp_code =
-      if is_nil(response["error"]), do: 200, else: response["code"]
+    # doi_resp_code =
+      # if is_nil(response["error"]), do: 200, else: response["code"]
 
-    doi_resp_msg =
-      if is_nil(response["error"]), do: "cancelled successfully", else: response["message"]
+    # doi_resp_msg =
+      # if is_nil(response["error"]), do: "cancelled successfully", else: response["message"]
 
-    status =
-      case is_valid? do
-        true -> doi_resp_code
-        false -> 500
-        _ -> 500
-      end
+    # status =
+    #   case is_valid? do
+    #     true -> doi_resp_code
+    #     false -> 500
+    #     _ -> 500
+    #   end
+
+    status = response["code"]
+
+    is_success? =
+      if (is_valid? and status == 200), do: true, else: false
 
     message =
-      case is_valid? do
-        true -> doi_resp_msg
-        false -> "cancellation failed"
+      case is_success? do
+        true -> response["response"]
+        false -> response["error"]
         _ -> "cancellation failed"
       end
 
@@ -860,6 +875,69 @@ defmodule TenbewGw.Endpoint do
     r_json(~m(response))
   rescue e ->
     "cellc_cancel/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
+  def bkp_call_cell_c(map) do
+    # The DOI service (double opt in) is a legal requirement. It allows the subscriber to confirm that they have indeed made the decision to subscriber.
+    # When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
+    # If the MSISDN is valid, Cell C returns a message that the subscriber is pending.
+    # Otherwise may reject the request because the subscriber is either not a Cell C subscriber or other reasons.
+    # payload = %{
+    #   "msisdn" => Map.get(map, "msisdn", ""),
+    #   "waspTID" => Map.get(map, "waspTID", ""),
+    #   "serviceID" => Map.get(map, "serviceID", ""),
+    #   "mn" => Map.get(map, "mn", "")
+    # } |> Jason.encode!
+    # headers = [ {"Authorization", "Token token=PsmmvKBqQDOaWwEsPpOCYMsy"} ]
+    headers = [{"Content-Type", "application/json"}]
+    endpoint = doi_api_url() <> "/subscriptions"
+    msisdn = Map.get(map, "msisdn", "")
+    params = %{
+      "subscription" => %{
+        "msisdn" => msisdn,
+        "state" => "active",
+        "service" => "gateway",
+        "reference" => "testing api",
+        "message" => "gateway subscription"
+      }
+    } # |> Jason.encode!
+
+    response =
+      case request(endpoint, :post, headers, params, 30) do
+        {200, body} -> body
+        {:error, :econnrefused} -> "connection error"
+        {:econnrefused, error} -> "connection error: #{error}"
+        _ -> "general error"
+      end
+    "RESPONSE : #{inspect(response)}" |> color_info(:green)
+
+    if is_binary(response) do
+      %{
+        "code" => 500,
+        "response" => nil,
+        "payload" => params,
+        "status" => "pending",
+        "error" => "#{response}",
+        "message" => "error calling DOI API"
+      }
+    else
+      %{
+        "code" => 200,
+        "error" => nil,
+        "payload" => params,
+        "status" => "active",
+        "response" => Poison.decode(response),
+        "message" => "successfully called DOI API"
+      }
+    end
+  rescue
+    e in MatchError ->
+      "call_cell_c/1 :: MatchError error : #{inspect e}" |> color_info(:red)
+
+    e in HackneyConnectionError ->
+      "call_cell_c/1 :: HackneyConnectionError error : #{inspect e}" |> color_info(:red)
+
+    e -> "call_cell_c/1 :: exception : #{inspect e}" |> color_info(:red)
   end
 
 

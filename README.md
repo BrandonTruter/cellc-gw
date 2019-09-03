@@ -45,7 +45,8 @@ These are for external usage to be called from QQ, consisting of 3 API endpoints
 2. ChargeSub
 3. CancelSub
 
-#### REQUEST
+#### REQUESTS
+
 
 **AddSub**
 
@@ -71,7 +72,8 @@ $ curl "http://156.38.208.218:4000/ChargeSub?waspTID=QQChina&serviceID=00&msisdn
 $ curl "http://156.38.208.218:4000/CancelSub?waspTID=QQChina&serviceID=00&msisdn=27124242247&mn=CellC_ZA" -H 'Content-Type: application/json'
 ```
 
-#### RESPONSE
+
+#### RESPONSES
 
 * `Parameter` Validations
 
@@ -81,7 +83,7 @@ $ curl "http://156.38.208.218:4000/CancelSub?waspTID=QQChina&serviceID=00&msisdn
 }
 ```
 
-2. MSISDN `Format` Validations
+* MSISDN `Format` Validations
 
 ```
 {
@@ -89,7 +91,7 @@ $ curl "http://156.38.208.218:4000/CancelSub?waspTID=QQChina&serviceID=00&msisdn
 }
 ```
 
-3. MSISDN `Existence` & `Status` Validations
+* MSISDN `Existence` & `Status` Validations
 
 ```
 {
@@ -104,6 +106,7 @@ These are mostly used for internal testing purposes, to create and retrieve foll
 2. Payments
 
 #### SUBSCRIPTIONS
+
 
 ⇒ POST `/api/v1/add_subscription`
 
@@ -145,6 +148,7 @@ Response:
   }
 ```
 
+
 ⇒ GET `/api/v1/get_subscription`
 
 **Success**
@@ -175,7 +179,9 @@ Response:
   }
 ```
 
+
 #### PAYMENTS
+
 
 ⇒ POST `/api/v1/add_payment`
 
@@ -261,6 +267,7 @@ Response:
 ### Other Endpoints
 These are other endpoints, either for redirection or to handle unknown requests:
 
+
 **GET /**
 
 ```shell
@@ -281,7 +288,6 @@ Response:
   {"type":"default","message":"welcome to tenbew gateway"}
 ```
 **GET /anything_else**
-●
 
 ```shell
 $ curl "http://156.38.208.218:4000/anything_else" -H 'Content-Type: application/json'
