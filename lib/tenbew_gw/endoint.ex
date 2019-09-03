@@ -50,8 +50,10 @@ defmodule TenbewGw.Endpoint do
   end
 
   def start_link(_opts) do
-    with {:ok, [port: port] = config} <- config() do
-      Logger.info("Starting server at http://localhost:#{port}/")
+    with {:ok, [ip: ip, port: port] = config} <- config() do
+      # Logger.info("Starting server at http://localhost:#{port}/")
+      Logger.info("Starting server at http://#{inspect(ip)}:#{port}/")
+      # Starting server at http://{127, 0, 0, 1}:4000/
       Plug.Cowboy.http(__MODULE__, [], config)
     end
   end
