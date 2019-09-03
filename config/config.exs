@@ -2,7 +2,7 @@ use Mix.Config
 
 config :tenbew_gw, ecto_repos: [TenbewGw.Repo]
 
-config :tenbew_gw, TenbewGw.Endpoint, ip: {127,0,0,1}
+# config :tenbew_gw, TenbewGw.Endpoint, ip: {127,0,0,1}
 config :tenbew_gw, TenbewGw.Endpoint, port: 4000
 
 config :tenbew_gw, base_api: "api/v1"

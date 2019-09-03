@@ -27,3 +27,5 @@ dev_error_logger.txt
 *.DS_Store
 
 /log/*
+
+.tool-versions
