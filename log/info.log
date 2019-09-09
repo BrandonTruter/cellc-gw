@@ -462,3 +462,174 @@ Request: POST /cellc/cancel
 2019-09-03 UTC 17:30:44.460 [request_id=FcD96EssRZHTbfAAACAj ] [info] [33mvalid_msisdn_existance/1[0m
 2019-09-03 UTC 17:30:44.467 [request_id=FcD96EssRZHTbfAAACAj ] [info] [31mValidation Error: invalid msisdn, already subscribed[0m
 2019-09-03 UTC 17:30:44.467 [request_id=FcD96EssRZHTbfAAACAj ] [info] Sent 200 in 7ms
+2019-09-06 UTC 09:45:33.644 [] [info] Application tenbew_gw exited: TenbewGw.Application.start(:normal, []) returned an error: shutdown: failed to start child: TenbewGw.Endpoint
+    ** (EXIT) {:ok, [ip: {127, 0, 0, 1}, port: 4000]}
+2019-09-06 UTC 09:46:46.403 [] [info] Starting server at http://localhost:4000/
+2019-09-06 UTC 09:47:36.752 [] [info] GET /ChargeSub
+2019-09-06 UTC 09:47:36.767 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [94mGET /ChargeSub :: msisdn: 27124245247[0m
+2019-09-06 UTC 09:47:36.767 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [33mvalid_parameters/1[0m
+2019-09-06 UTC 09:47:36.843 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [34mURL "http://localhost:3000/api/v1/charge_sub" BODY "{\"msisdn\":\"27124245247\"}"[0m
+2019-09-06 UTC 09:47:39.957 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [33mref: #Reference<0.2458682830.4210819075.128853>[0m
+2019-09-06 UTC 09:47:39.958 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [33mheaders at loop: [{"Content-Type", "application/json; charset=utf-8"}, {"ETag", "W/\"8a1d4b62006e616e164fa9c66f71ca46\""}, {"Cache-Control", "max-age=0, private, must-revalidate"}, {"X-Request-Id", "e5d67a47-5a63-49b1-b5a3-df6608a234a9"}, {"X-Runtime", "2.504290"}, {"Transfer-Encoding", "chunked"}][0m
+2019-09-06 UTC 09:47:39.958 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [33mref: #Reference<0.2458682830.4210819075.128853>[0m
+2019-09-06 UTC 09:47:39.958 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [33mref: #Reference<0.2458682830.4210819075.128853>[0m
+2019-09-06 UTC 09:47:39.963 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [35mhackney: status: 200 "{\"result\":\"221\",\"service_id\":\"00\",\"wasp_reference\":null,\"wasp_tid\":\"QQChina\"}"[0m
+2019-09-06 UTC 09:47:39.968 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [32mcharge_sub processed successfully, %{"result" => "221", "service_id" => "00", "wasp_reference" => nil, "wasp_tid" => "QQChina"}[0m
+2019-09-06 UTC 09:47:39.969 [request_id=FcHQYCqoVwCHsykAACOD ] [info] [31mupdate_subscription_details/2 error : subscription not found[0m
+2019-09-06 UTC 09:47:39.971 [request_id=FcHQYCqoVwCHsykAACOD ] [info] Sent 200 in 3219ms
+2019-09-06 UTC 09:51:08.803 [] [info] GET /ChargeSub
+2019-09-06 UTC 09:51:08.804 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [94mGET /ChargeSub :: msisdn: 27100240122[0m
+2019-09-06 UTC 09:51:08.804 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [33mvalid_parameters/1[0m
+2019-09-06 UTC 09:51:08.821 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [34mURL "http://localhost:3000/api/v1/charge_sub" BODY "{\"msisdn\":\"27100240122\"}"[0m
+2019-09-06 UTC 09:51:11.497 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [33mref: #Reference<0.2458682830.4210819075.129573>[0m
+2019-09-06 UTC 09:51:11.497 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [33mheaders at loop: [{"Content-Type", "application/json; charset=utf-8"}, {"ETag", "W/\"8a1d4b62006e616e164fa9c66f71ca46\""}, {"Cache-Control", "max-age=0, private, must-revalidate"}, {"X-Request-Id", "e498a664-73e4-4dd0-93c9-cd9fef11475b"}, {"X-Runtime", "2.670638"}, {"Transfer-Encoding", "chunked"}][0m
+2019-09-06 UTC 09:51:11.497 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [33mref: #Reference<0.2458682830.4210819075.129573>[0m
+2019-09-06 UTC 09:51:11.497 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [33mref: #Reference<0.2458682830.4210819075.129573>[0m
+2019-09-06 UTC 09:51:11.498 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [35mhackney: status: 200 "{\"result\":\"221\",\"service_id\":\"00\",\"wasp_reference\":null,\"wasp_tid\":\"QQChina\"}"[0m
+2019-09-06 UTC 09:51:11.498 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [32mcharge_sub processed successfully, %{"result" => "221", "service_id" => "00", "wasp_reference" => nil, "wasp_tid" => "QQChina"}[0m
+2019-09-06 UTC 09:51:11.499 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [33mupdate_subscription/2 :: %{msisdn: "27100240122", services: "00", status: "active", validated: true}[0m
+2019-09-06 UTC 09:51:11.682 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] [32mSubscription updated successfully: %TenbewGw.Model.Subscription{__meta__: #Ecto.Schema.Metadata<:loaded, "subscriptions">, id: "9ab16c4f-bff4-45f9-9ef8-ebdbc91ab2a7", inserted_at: ~N[2019-08-27 13:40:43], msisdn: "27100240122", payments: #Ecto.Association.NotLoaded<association :payments is not loaded>, services: "00", status: "active", updated_at: ~N[2019-09-06 09:51:11], validated: true}[0m
+2019-09-06 UTC 09:51:11.682 [request_id=FcHQkYnlbkYoHEsAACPD ] [info] Sent 200 in 2878ms
+2019-09-06 UTC 09:51:52.719 [] [info] POST /cellc/notify
+2019-09-06 UTC 09:51:52.726 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 09:51:52.726 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [33mcellc_notify/2 :: params: %{"msisdn" => "27100240122"}[0m
+2019-09-06 UTC 09:51:52.726 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [34mURL "http://localhost:3000/api/v1/notify_sub" BODY "{\"msisdn\":\"27100240122\"}"[0m
+2019-09-06 UTC 09:51:54.913 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [33mref: #Reference<0.2458682830.4210819075.129787>[0m
+2019-09-06 UTC 09:51:54.914 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [33mheaders at loop: [{"Content-Type", "application/json; charset=utf-8"}, {"ETag", "W/\"21b8109f937011834bd2842fd4bdd63a\""}, {"Cache-Control", "max-age=0, private, must-revalidate"}, {"X-Request-Id", "b7f5e6ea-53d1-49ea-a5cf-8098cb7ff169"}, {"X-Runtime", "2.184835"}, {"Transfer-Encoding", "chunked"}][0m
+2019-09-06 UTC 09:51:54.914 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [33mref: #Reference<0.2458682830.4210819075.129787>[0m
+2019-09-06 UTC 09:51:54.914 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [33mref: #Reference<0.2458682830.4210819075.129787>[0m
+2019-09-06 UTC 09:51:54.914 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [35mhackney: status: 200 "{\"return\":{\"result\":\"221\",\"service_id\":null,\"wasp_reference\":null,\"wasp_tid\":\"QQChina\"},\"@xmlns:ns2\":\"http://wasp.doi.soap.protocol.cellc.co.za\"}"[0m
+2019-09-06 UTC 09:51:54.914 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] [32mcellc_notify/2 :: response: %{"@xmlns:ns2" => "http://wasp.doi.soap.protocol.cellc.co.za", "return" => %{"result" => "221", "service_id" => nil, "wasp_reference" => nil, "wasp_tid" => "QQChina"}}[0m
+2019-09-06 UTC 09:51:54.914 [request_id=FcHQm8N-aaxqyLgAACPj ] [info] Sent 200 in 2194ms
+2019-09-06 UTC 09:53:24.981 [] [info] GET /get_subscription
+2019-09-06 UTC 09:53:24.981 [request_id=FcHQsT6yQ5sEDbQAACQD ] [info] [94mget_subscription/2 :: params: %{"msisdn" => "27100240122"}[0m
+2019-09-06 UTC 09:53:24.986 [request_id=FcHQsT6yQ5sEDbQAACQD ] [info] Sent 200 in 5ms
+2019-09-06 UTC 09:53:45.077 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 09:53:45.077 [request_id=FcHQteyDlgTCpWgAACQj ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 09:53:45.077 [request_id=FcHQteyDlgTCpWgAACQj ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 09:53:45.080 [request_id=FcHQteyDlgTCpWgAACQj ] [info] [33mupdate_subscription_status/1 :: "pending"[0m
+2019-09-06 UTC 09:53:45.222 [request_id=FcHQteyDlgTCpWgAACQj ] [info] [32mUpdated status from: pending, to: pending[0m
+2019-09-06 UTC 09:53:45.275 [] [error] #PID<0.498.0> running TenbewGw.Endpoint (connection #PID<0.497.0>, stream id 1) terminated
+Server: localhost:4000 (http)
+Request: POST /api/v1/update_sub_status
+** (exit) an exception was raised:
+    ** (RuntimeError) expected dispatch/2 to return a Plug.Conn, all plugs must receive a connection (conn) and return a connection, got: %{success: %{date: ~N[2019-09-06 09:53:45], id: "9ab16c4f-bff4-45f9-9ef8-ebdbc91ab2a7", is_validated: "Yes", msisdn: "27100240122", services: "00", status: "pending"}}
+        (tenbew_gw) lib/tenbew_gw/endoint.ex:16: TenbewGw.Endpoint.plug_builder_call/2
+        (tenbew_gw) lib/plug/debugger.ex:122: TenbewGw.Endpoint."call (overridable 3)"/2
+        (tenbew_gw) lib/plug/error_handler.ex:64: TenbewGw.Endpoint.call/2
+        (plug_cowboy) lib/plug/cowboy/handler.ex:12: Plug.Cowboy.Handler.init/2
+        (cowboy) /Users/brandonleetruter/tenbew/tenbew_gw/deps/cowboy/src/cowboy_handler.erl:41: :cowboy_handler.execute/2
+        (cowboy) /Users/brandonleetruter/tenbew/tenbew_gw/deps/cowboy/src/cowboy_stream_h.erl:296: :cowboy_stream_h.execute/3
+        (cowboy) /Users/brandonleetruter/tenbew/tenbew_gw/deps/cowboy/src/cowboy_stream_h.erl:274: :cowboy_stream_h.request_process/3
+        (stdlib) proc_lib.erl:247: :proc_lib.init_p_do_apply/3
+2019-09-06 UTC 09:58:38.810 [] [info] Starting server at http://localhost:4000/
+2019-09-06 UTC 09:58:49.015 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 09:58:49.040 [request_id=FcHQ_LCngbgr-0cAAEvk ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 09:58:49.040 [request_id=FcHQ_LCngbgr-0cAAEvk ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 09:58:49.097 [request_id=FcHQ_LCngbgr-0cAAEvk ] [info] [33mupdate_subscription_status/1 :: "pending"[0m
+2019-09-06 UTC 09:58:49.103 [request_id=FcHQ_LCngbgr-0cAAEvk ] [info] [32mUpdated status from: pending, to: pending[0m
+2019-09-06 UTC 09:58:49.118 [request_id=FcHQ_LCngbgr-0cAAEvk ] [info] Sent 200 in 102ms
+2019-09-06 UTC 09:59:10.461 [] [info] GET /get_subscription
+2019-09-06 UTC 09:59:10.464 [request_id=FcHRAa7ln-CgNKwAAAvC ] [info] [94mget_subscription/2 :: params: %{"msisdn" => "27100240122"}[0m
+2019-09-06 UTC 09:59:10.467 [request_id=FcHRAa7ln-CgNKwAAAvC ] [info] Sent 200 in 6ms
+2019-09-06 UTC 09:59:53.445 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 09:59:53.445 [request_id=FcHRC7DyNOqoRBUAAAsB ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 09:59:53.445 [request_id=FcHRC7DyNOqoRBUAAAsB ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 09:59:53.453 [request_id=FcHRC7DyNOqoRBUAAAsB ] [info] [33mupdate_subscription_status/1 :: "active"[0m
+2019-09-06 UTC 09:59:53.572 [request_id=FcHRC7DyNOqoRBUAAAsB ] [info] [32mUpdated status from: active, to: active[0m
+2019-09-06 UTC 09:59:53.572 [request_id=FcHRC7DyNOqoRBUAAAsB ] [info] Sent 200 in 127ms
+2019-09-06 UTC 10:00:22.518 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 10:00:22.518 [request_id=FcHREnXTeMPjKlcAAAvi ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 10:00:22.518 [request_id=FcHREnXTeMPjKlcAAAvi ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 10:00:22.520 [request_id=FcHREnXTeMPjKlcAAAvi ] [info] [33mupdate_subscription_status/1 :: "active"[0m
+2019-09-06 UTC 10:00:22.520 [request_id=FcHREnXTeMPjKlcAAAvi ] [info] [32mUpdated status from: active, to: active[0m
+2019-09-06 UTC 10:00:22.520 [request_id=FcHREnXTeMPjKlcAAAvi ] [info] Sent 200 in 2ms
+2019-09-06 UTC 10:00:28.760 [] [info] GET /get_subscription
+2019-09-06 UTC 10:00:28.760 [request_id=FcHRE-nrmXe9MFUAAAwC ] [info] [94mget_subscription/2 :: params: %{"msisdn" => "27100240122"}[0m
+2019-09-06 UTC 10:00:28.764 [request_id=FcHRE-nrmXe9MFUAAAwC ] [info] Sent 200 in 3ms
+2019-09-06 UTC 10:01:13.510 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 10:01:13.511 [request_id=FcHRHlU8l77bnp0AAAwi ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 10:01:13.511 [request_id=FcHRHlU8l77bnp0AAAwi ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 10:01:13.511 [request_id=FcHRHlU8l77bnp0AAAwi ] [info] Sent 200 in 1ms
+2019-09-06 UTC 10:02:00.631 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 10:02:00.631 [request_id=FcHRKU3UVOhTJSgAAAxC ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 10:02:00.631 [request_id=FcHRKU3UVOhTJSgAAAxC ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 10:02:00.631 [request_id=FcHRKU3UVOhTJSgAAAxC ] [info] Sent 200 in 178µs
+2019-09-06 UTC 10:09:39.172 [] [info] Starting server at http://localhost:4000/
+2019-09-06 UTC 10:10:29.236 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 10:10:29.255 [request_id=FcHRn7kPewAr-0cAADtk ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 10:10:29.255 [request_id=FcHRn7kPewAr-0cAADtk ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 10:10:29.311 [request_id=FcHRn7kPewAr-0cAADtk ] [info] Sent 200 in 75ms
+2019-09-06 UTC 10:10:46.620 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 10:10:46.620 [request_id=FcHRo8U6e7CgNKwAADuE ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 10:10:46.620 [request_id=FcHRo8U6e7CgNKwAADuE ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 10:10:46.625 [request_id=FcHRo8U6e7CgNKwAADuE ] [info] Sent 200 in 4ms
+2019-09-06 UTC 10:12:02.414 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 10:12:02.414 [request_id=FcHRtWrkSbg_2QUAADuk ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 10:12:02.414 [request_id=FcHRtWrkSbg_2QUAADuk ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 10:12:02.414 [request_id=FcHRtWrkSbg_2QUAADuk ] [info] Sent 200 in 167µs
+2019-09-06 UTC 10:16:40.160 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 10:16:40.160 [request_id=FcHR9hXbi-gY_AIAADvE ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 10:16:40.160 [request_id=FcHR9hXbi-gY_AIAADvE ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 10:16:40.162 [request_id=FcHR9hXbi-gY_AIAADvE ] [info] Sent 200 in 2ms
+2019-09-06 UTC 10:17:07.317 [] [info] POST /api/v1/update_sub_status
+2019-09-06 UTC 10:17:07.318 [request_id=FcHR_GiPgFDbnp0AABWj ] [info] [33mvalue empty from read_body[0m
+2019-09-06 UTC 10:17:07.318 [request_id=FcHR_GiPgFDbnp0AABWj ] [info] [94mupdate_sub_status/2[0m
+2019-09-06 UTC 10:17:07.322 [request_id=FcHR_GiPgFDbnp0AABWj ] [info] Sent 200 in 4ms
+2019-09-06 UTC 10:17:35.430 [] [info] GET /AddSub
+2019-09-06 UTC 10:17:35.430 [request_id=FcHSAvQvEMBTJSgAABXD ] [info] [94mGET /AddSub :: msisdn: 27124245247[0m
+2019-09-06 UTC 10:17:35.430 [request_id=FcHSAvQvEMBTJSgAABXD ] [info] [33mvalid_parameters/1[0m
+2019-09-06 UTC 10:17:35.430 [request_id=FcHSAvQvEMBTJSgAABXD ] [info] [33mvalid_msisdn_format/1[0m
+2019-09-06 UTC 10:17:35.444 [request_id=FcHSAvQvEMBTJSgAABXD ] [info] [33mvalid_msisdn_existance/1[0m
+2019-09-06 UTC 10:17:35.445 [request_id=FcHSAvQvEMBTJSgAABXD ] [info] [34mURL "http://localhost:3000/api/v1/add_sub" BODY "{\"msisdn\":\"27124245247\"}"[0m
+2019-09-06 UTC 10:18:05.506 [request_id=FcHSAvQvEMBTJSgAABXD ] [info] [33mrequest timeout[0m
+2019-09-06 UTC 10:18:05.506 [request_id=FcHSAvQvEMBTJSgAABXD ] [info] [31madd_sub request failed, "code: 403, message: request timeout"[0m
+2019-09-06 UTC 10:18:05.511 [request_id=FcHSAvQvEMBTJSgAABXD ] [info] Sent 200 in 30081ms
+2019-09-09 UTC 11:57:25.121 [] [info] Starting server at http://localhost:4000/
+2019-09-09 UTC 11:58:15.883 [] [info] GET /AddSub
+2019-09-09 UTC 11:58:15.903 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [94mGET /AddSub :: msisdn: 27124242247[0m
+2019-09-09 UTC 11:58:15.903 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [33mvalid_parameters/1[0m
+2019-09-09 UTC 11:58:15.903 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [33mvalid_msisdn_format/1[0m
+2019-09-09 UTC 11:58:15.908 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [33mvalid_msisdn_existance/1[0m
+2019-09-09 UTC 11:58:16.030 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [34mURL "http://localhost:3000/api/v1/add_sub" BODY "{\"msisdn\":\"27124242247\"}"[0m
+2019-09-09 UTC 11:58:20.116 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [33mref: #Reference<0.1305730977.873725956.9509>[0m
+2019-09-09 UTC 11:58:20.120 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [33mheaders at loop: [{"Content-Type", "application/json; charset=utf-8"}, {"ETag", "W/\"b285d718a9c288f76ec6756e042154d2\""}, {"Cache-Control", "max-age=0, private, must-revalidate"}, {"X-Request-Id", "ac77d884-e52c-416a-9e48-7711e12892d9"}, {"X-Runtime", "3.537307"}, {"Transfer-Encoding", "chunked"}][0m
+2019-09-09 UTC 11:58:20.120 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [33mref: #Reference<0.1305730977.873725956.9509>[0m
+2019-09-09 UTC 11:58:20.120 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [33mref: #Reference<0.1305730977.873725956.9509>[0m
+2019-09-09 UTC 11:58:20.126 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [35mhackney: status: 200 "{\"result\":\"0\",\"service_id\":\"3345408\",\"wasp_reference\":\"00\",\"wasp_tid\":\"QQChina\"}"[0m
+2019-09-09 UTC 11:58:20.136 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [32madd_sub processed successfully, %{"result" => "0", "service_id" => "3345408", "wasp_reference" => "00", "wasp_tid" => "QQChina"}[0m
+2019-09-09 UTC 11:58:20.136 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [94mSuccessfull response, updating subscriber[0m
+2019-09-09 UTC 11:58:20.140 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [33mupdate_subscription/2 :: %{msisdn: "27124242247", services: nil, status: "active", validated: true}[0m
+2019-09-09 UTC 11:58:20.209 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] [32mSubscription updated successfully: %TenbewGw.Model.Subscription{__meta__: #Ecto.Schema.Metadata<:loaded, "subscriptions">, id: "e5b4b3bd-568d-441a-80ec-17ad82fe14d5", inserted_at: ~N[2019-01-01 00:26:37], msisdn: "27124242247", payments: #Ecto.Association.NotLoaded<association :payments is not loaded>, services: nil, status: "active", updated_at: ~N[2019-09-09 11:58:20], validated: true}[0m
+2019-09-09 UTC 11:58:20.213 [request_id=FcLDPw9VrRjFBQAAAArj ] [info] Sent 200 in 4330ms
+2019-09-09 UTC 11:58:49.650 [] [info] GET /ChargeSub
+2019-09-09 UTC 11:58:49.650 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [94mGET /ChargeSub :: msisdn: 27124222247[0m
+2019-09-09 UTC 11:58:49.650 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [33mvalid_parameters/1[0m
+2019-09-09 UTC 11:58:49.652 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [34mURL "http://localhost:3000/api/v1/charge_sub" BODY "{\"msisdn\":\"27124222247\"}"[0m
+2019-09-09 UTC 11:58:52.624 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [33mref: #Reference<0.1305730977.873725956.9642>[0m
+2019-09-09 UTC 11:58:52.624 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [33mheaders at loop: [{"Content-Type", "application/json; charset=utf-8"}, {"ETag", "W/\"8a1d4b62006e616e164fa9c66f71ca46\""}, {"Cache-Control", "max-age=0, private, must-revalidate"}, {"X-Request-Id", "15d9d54c-d16e-4a24-9b09-561d98b812ef"}, {"X-Runtime", "2.969846"}, {"Transfer-Encoding", "chunked"}][0m
+2019-09-09 UTC 11:58:52.625 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [33mref: #Reference<0.1305730977.873725956.9642>[0m
+2019-09-09 UTC 11:58:52.625 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [33mref: #Reference<0.1305730977.873725956.9642>[0m
+2019-09-09 UTC 11:58:52.625 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [35mhackney: status: 200 "{\"result\":\"221\",\"service_id\":\"00\",\"wasp_reference\":null,\"wasp_tid\":\"QQChina\"}"[0m
+2019-09-09 UTC 11:58:52.625 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [32mcharge_sub processed successfully, %{"result" => "221", "service_id" => "00", "wasp_reference" => nil, "wasp_tid" => "QQChina"}[0m
+2019-09-09 UTC 11:58:52.626 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [33mupdate_subscription/2 :: %{msisdn: "27124222247", services: "00", status: "active", validated: true}[0m
+2019-09-09 UTC 11:58:52.696 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] [32mSubscription updated successfully: %TenbewGw.Model.Subscription{__meta__: #Ecto.Schema.Metadata<:loaded, "subscriptions">, id: "34d79abb-6815-49a5-84a9-982c733a91d4", inserted_at: ~N[2019-09-03 17:05:54], msisdn: "27124222247", payments: #Ecto.Association.NotLoaded<association :payments is not loaded>, services: "00", status: "active", updated_at: ~N[2019-09-09 11:58:52], validated: true}[0m
+2019-09-09 UTC 11:58:52.696 [request_id=FcLDRuvbKSWhJqoAAAsj ] [info] Sent 200 in 3045ms
+2019-09-09 UTC 11:59:09.212 [] [info] GET /CancelSub
+2019-09-09 UTC 11:59:09.212 [request_id=FcLDS3nYwajfov8AAAtD ] [info] [94mGET /CancelSub :: msisdn: 27124222247[0m
+2019-09-09 UTC 11:59:09.212 [request_id=FcLDS3nYwajfov8AAAtD ] [info] [33mvalid_parameters/1[0m
+2019-09-09 UTC 11:59:09.212 [request_id=FcLDS3nYwajfov8AAAtD ] [info] [33mvalid_msisdn_format/1[0m
+2019-09-09 UTC 11:59:09.212 [request_id=FcLDS3nYwajfov8AAAtD ] [info] [33mvalid_msisdn_existance/1[0m
+2019-09-09 UTC 11:59:09.216 [request_id=FcLDS3nYwajfov8AAAtD ] [info] [31mValidation Error: invalid msisdn, not subscribed[0m
+2019-09-09 UTC 11:59:09.216 [request_id=FcLDS3nYwajfov8AAAtD ] [info] Sent 200 in 4ms
+2019-09-09 UTC 11:59:27.004 [] [info] GET /CancelSub
+2019-09-09 UTC 11:59:27.004 [request_id=FcLDT55RlC9ELGIAAAtj ] [info] [94mGET /CancelSub :: msisdn: 27124242247[0m
+2019-09-09 UTC 11:59:27.004 [request_id=FcLDT55RlC9ELGIAAAtj ] [info] [33mvalid_parameters/1[0m
+2019-09-09 UTC 11:59:27.004 [request_id=FcLDT55RlC9ELGIAAAtj ] [info] [33mvalid_msisdn_format/1[0m
+2019-09-09 UTC 11:59:27.004 [request_id=FcLDT55RlC9ELGIAAAtj ] [info] [33mvalid_msisdn_existance/1[0m
+2019-09-09 UTC 11:59:27.007 [request_id=FcLDT55RlC9ELGIAAAtj ] [info] [31mValidation Error: invalid msisdn, not subscribed[0m
+2019-09-09 UTC 11:59:27.007 [request_id=FcLDT55RlC9ELGIAAAtj ] [info] Sent 200 in 2ms
+2019-09-09 UTC 12:00:17.342 [] [info] POST /api/v1/update_sub_status
+2019-09-09 UTC 12:00:17.351 [request_id=FcLDW1a88dHlB3sAAAuD ] [info] [33mvalue empty from read_body[0m
+2019-09-09 UTC 12:00:17.351 [request_id=FcLDW1a88dHlB3sAAAuD ] [info] [94mupdate_sub_status/2[0m
+2019-09-09 UTC 12:00:17.352 [request_id=FcLDW1a88dHlB3sAAAuD ] [info] Sent 200 in 9ms

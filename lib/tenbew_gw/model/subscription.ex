@@ -33,6 +33,11 @@ defmodule TenbewGw.Model.Subscription do
     changeset(subscription, attrs)
   end
 
+  def update_changeset(%Subscription{} = subscription, attrs) do
+    subscription
+      |> cast(attrs, [:msisdn, :status, :services, :validated])
+  end
+
   def status_changeset(%Subscription{} = subscription, attrs) do
     subscription
     |> cast(attrs, [:status])
@@ -51,6 +56,12 @@ defmodule TenbewGw.Model.Subscription do
       |> Repo.insert
   end
 
+  def update_subscription(%Subscription{} = subscription, attrs \\ %{}) do
+    subscription
+      |> update_changeset(attrs)
+      |> Repo.update()
+  end
+
   def set_status(%Subscription{} = subscription, attrs) do
     subscription
       |> status_changeset(attrs)
@@ -64,10 +75,15 @@ defmodule TenbewGw.Model.Subscription do
     e -> nil
   end
 
+  def get_by_msisdn!(msisdn) do
+    Subscription |> Repo.get_by!(msisdn: msisdn)
+  rescue e ->
+    nil
+  end
   def get_by_msisdn(msisdn) do
-    query = from(s in Subscription, where: s.msisdn == ^msisdn)
-    Repo.all(query)
-    |> List.first()
+    from(s in Subscription, where: s.msisdn == ^msisdn)
+      |> Repo.all()
+      |> List.first()
   rescue e ->
     nil
   end
