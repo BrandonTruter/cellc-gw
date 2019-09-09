@@ -52,8 +52,6 @@ defmodule TenbewGw.Endpoint do
   def start_link(_opts) do
     with {:ok, [port: port] = config} <- config() do
       Logger.info("Starting server at http://localhost:#{port}/")
-      # with {:ok, [port: port, ip: ip] = config} <- config() do
-      # Logger.info("Starting server at http://#{inspect(ip)}:#{port}/")
       Plug.Cowboy.http(__MODULE__, [], config)
     end
   end
@@ -76,14 +74,16 @@ defmodule TenbewGw.Endpoint do
     end
   end
 
-  get "/api/v1/" do
-    "/" |> color_info(:lightblue)
-    return_welcome_response(conn)
-  end
-
   get "/home" do
     "/home" |> color_info(:lightblue)
     return_welcome_response(conn)
+  end
+
+  get "/api/v1/" do
+    "/api/v1/" |> color_info(:lightblue)
+    status  = 200
+    message = "specify an API endpoint"
+    r_json(~m(status message))
   end
 
   get "/" do
@@ -126,6 +126,7 @@ defmodule TenbewGw.Endpoint do
             "/add_subscription" -> {__MODULE__, :add_subscription, ["general"]}
             "/add_payment" -> {__MODULE__, :add_payment, ["general"]}
 
+            "/callback_url" -> {__MODULE__, :update_sub_status, ["general"]}
             "/update_sub_status" -> {__MODULE__, :update_sub_status, ["general"]}
 
             "/cellc/add" -> {__MODULE__, :cellc_add, ["general"]}
@@ -244,13 +245,25 @@ defmodule TenbewGw.Endpoint do
   end
 
   # STEP 3 - Check if the MSISDN is already Subscribed
-  def valid_msisdn_existance(msisdn) do
-    "valid_msisdn_existance/1" |> color_info(:yellow)
+  def valid_msisdn_existance(msisdn, status) do
+    "valid_msisdn_existance/2 :: msisdn: #{inspect(msisdn)}, status: #{inspect(status)}" |> color_info(:yellow)
     # This processes queries Tenbew database to see if the MSISDN is registered in the subscriber database and listed as either pending or active
     if Subscription.exists?(msisdn) do
       case Subscription.get_status(msisdn) do
-        # "pending" -> true
-        # "active" -> false
+        str when str == status -> true
+        _ -> false
+      end
+    else
+      true
+    end
+  rescue e ->
+    "valid_msisdn_existance/2 exception : #{inspect e}" |> color_info(:red)
+    false
+  end
+  def valid_msisdn_existance(msisdn) do
+    "valid_msisdn_existance/1" |> color_info(:yellow)
+    if Subscription.exists?(msisdn) do
+      case Subscription.get_status(msisdn) do
         str when str in ["pending", "active"] -> true
         _ -> false
       end
@@ -374,43 +387,44 @@ defmodule TenbewGw.Endpoint do
     "update_subscription_details/2 exception : #{inspect e}" |> color_info(:red)
   end
 
-  # This happens when a subscriber through QQ portal ask to subscribe for service(s).
-  # QQ portal calls Tenbew gateway for downstream processing
+
   def add_sub(conn, opts) do
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
     "GET /AddSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
 
-    # Step 1
+    # 1.Receive add subscriber request
     unless valid_parameters(map) do
       raise ValidationError, message: "invalid params, missing details", status: 500
     end
-    # Step 2
+
+    # 2. Conduct basic MSISDN Validation
     unless valid_msisdn_format(msisdn) do
       raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
     end
-    # Step 3
-    unless valid_msisdn_existance(msisdn) do
+
+    # 3. Check if the MSISDN is already Subscribed
+    unless valid_msisdn_existance(msisdn, "pending") do
       raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
     end
-    # Step 4
-    doi_response = call_cell_c("add_sub", map)
-    # unless doi_response["status"] == "pending" do
-    #   raise ApiError, message: response["message"] || ""
-    # end
-    is_success =
-      if (doi_response["code"] == 200 and is_nil(doi_response["error"])), do: true, else: false
 
-    # Step 5
-    if is_success do
-      "Successfull response, updating subscriber" |> color_info(:lightblue)
-      update_subscription_details(msisdn, doi_response)
+    # 4. Call up Cell C DOI Service
+    response = call_cell_c("add_sub", map)
+    is_success? =
+      if (response["code"] == 200 and is_nil(response["error"])), do: true, else: false
+
+    # Received Pending Status
+    unless is_success? do
+      raise ApiError, message: "invalid request or subscriber from DOI response"
     end
 
-    status = if is_success, do: 200, else: doi_response["code"]
+    # 5. Update Database, send code 200 to QQ
+    unless is_nil(response["data"]) do
+      update_subscription_details(msisdn, response["data"])
+    end
 
-    message = if is_success, do: doi_response["response"], else: doi_response["error"]
-
+    status = if is_success?, do: 200, else: response["code"]
+    message = if is_success?, do: response["response"], else: response["error"]
     r_json(~m(status message)s)
   rescue
     e in ValidationError ->
@@ -1046,6 +1060,82 @@ defmodule TenbewGw.Endpoint do
   end
 
   # Backups
+
+  def bkp_add_sub(conn, opts) do
+    # This happens when a subscriber through QQ portal ask to subscribe for service(s).
+    # QQ portal calls Tenbew gateway for downstream processing
+    map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    "GET /AddSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
+
+    # 1.Receive add subscriber request
+    unless valid_parameters(map) do
+      raise ValidationError, message: "invalid params, missing details", status: 500
+    end
+
+    # 2. Conduct basic MSISDN Validation
+    unless valid_msisdn_format(msisdn) do
+      raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+    end
+
+    # 3. Check if the MSISDN is already Subscribed
+    sub_status = Subscription.get_status(msisdn)
+    is_valid =
+      if Subscription.exists?(msisdn) do
+        if sub_status == "active" do
+          false
+        else
+          if sub_status == "pending" do
+            true
+          else
+            false
+          end
+        end
+      else
+        true
+      end
+
+    if is_valid do
+      # 4. Call up Cell C DOI Service
+      doi_response = call_cell_c("add_sub", map)
+
+      # unless doi_response["status"] == "pending" do
+      #   raise ApiError, message: response["message"] || ""
+      # end
+      is_success =
+        if (doi_response["code"] == 200 and is_nil(doi_response["error"])), do: true, else: false
+
+      # Step 5
+      if is_success do
+        "Successfull response, updating subscriber" |> color_info(:lightblue)
+        update_subscription_details(msisdn, doi_response)
+      end
+
+      status = if is_success, do: 200, else: doi_response["code"]
+
+      message = if is_success, do: doi_response["response"], else: doi_response["error"]
+
+      r_json(~m(status message)s)
+    else
+      raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    end
+  rescue
+    e in ValidationError ->
+      "Validation Error: #{e.message}" |> color_info(:red)
+       status = e.status
+       message = e.message
+       r_json(~m(status message)s)
+    e in ApiError ->
+      "API Error: #{e.message}" |> color_info(:red)
+      status = 501
+      message = e.message
+      r_json(~m(status message)s)
+    e ->
+      "Exception: #{inspect(e)}" |> color_info(:red)
+      status = 500
+      message = "error occured"
+      r_json(~m(status message)s)
+  end
 
   def bkp_charge_sub(conn, opts) do
     # This is a call from Tenbew to charge the subscriber for usage of the content.
