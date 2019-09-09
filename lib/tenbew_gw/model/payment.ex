@@ -69,12 +69,17 @@ defmodule TenbewGw.Model.Payment do
   end
 
   def last_payment_by_subscriber(subscription_id) do
-    get_payments_by_subscriber(subscription_id)
-      |> List.first()
+    get_payments_by_subscriber(subscription_id) |> List.last()
+  rescue
+    e -> nil
   end
 
   def get_first_payment() do
     Payment |> Repo.all() |> List.first()
+  end
+
+  def get_last_payment() do
+    Payment |> Repo.all() |> List.last()
   end
 
   def exists?(msisdn) do

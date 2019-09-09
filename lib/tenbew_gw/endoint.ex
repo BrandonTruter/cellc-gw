@@ -380,7 +380,6 @@ defmodule TenbewGw.Endpoint do
         validated: true,
         services: services
       }
-
       update_subscription(subscription, update_attrs)
     end
   rescue e ->
@@ -444,11 +443,77 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
+
+  # STEP 5 - Update Database, send code 200 to QQ
+  def create_payment_details(msisdn) do
+    subscription = Subscription.get_by_msisdn(msisdn)
+
+    unless is_nil(subscription) do
+      payment_date = NaiveDateTime.utc_now  #|| subscription.inserted_at |> NaiveDateTime.from_iso8601!()
+      qq_charges = Application.get_env(:tenbew_gw, :charges)
+      service = qq_charges[:code] || subscription.services
+      charge = qq_charges[:value]
+      amount =
+        case charge do
+          v when is_nil(v) -> 0
+          v when is_integer(v) -> v
+          v when is_binary(v) -> String.to_integer(v)
+        end
+      attrs = %{
+        paid: true,
+        msisdn: msisdn,
+        amount: amount,
+        status: "paid",
+        service_type: service,
+        paid_at: payment_date,
+        subscription_id: subscription.id
+      }
+      case Payment.create_payment(attrs) do
+        {:ok, payment} ->
+          "Payment Success: #{inspect(payment)}" |> color_info(:green)
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          "Payment Error: #{changeset_errors(changeset)}" |> color_info(:red)
+
+        _ -> "Payment Exception with attrs: #{inspect(attrs)}" |> color_info(:red)
+      end
+    end
+    rescue e -> "create_payment_details/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
   # 7. Is MSISDN already charged for the day?
   def validate_daily_payment(msisdn) do
     # This process checks the database to ensure that the subscriber does not get charged twice.
     # This could potentially be the case when a subsequent retry of a failed charge shows that the subscriber has already been charged but QQ has not been updated
-    false
+    if Payment.exists?(msisdn) do
+      subscriber = Subscription.get_by_msisdn(msisdn) |> Repo.preload([:payments])
+
+      if not is_nil(subscriber) do
+        payment = Payment.last_payment_by_subscriber(subscriber.id)
+
+        if not is_nil(payment) do
+          # end_date = NaiveDateTime.utc_now
+          # start_date = payment.inserted_at || payment.paid_at
+          # difference = Date.diff(start_date, end_date) |> abs
+          # case NaiveDateTime.compare(start_date, end_date) do
+          #   :gt -> false
+          #   :lt -> false
+          #    _  -> true
+          # end
+          difference = Date.diff(payment.updated_at, NaiveDateTime.utc_now) |> abs
+          difference == 0
+        else
+          false
+        end
+      else
+        false
+      end
+    else
+      false
+    end
+    # false
+  rescue e ->
+    "validate_daily_payment/1 exception: #{inspect e}" |> color_info(:red)
   end
 
   def charge_sub(conn, opts) do
@@ -472,6 +537,7 @@ defmodule TenbewGw.Endpoint do
             response = call_cell_c("charge_sub", map)
             # 5. Update Database, send code 200 to QQ
             if response["code"] == 200 do
+              create_payment_details(msisdn)
               update_subscription_details(msisdn, response["data"])
 
               status  = 200

@@ -633,3 +633,5 @@ Request: POST /api/v1/update_sub_status
 2019-09-09 UTC 12:00:17.351 [request_id=FcLDW1a88dHlB3sAAAuD ] [info] [33mvalue empty from read_body[0m
 2019-09-09 UTC 12:00:17.351 [request_id=FcLDW1a88dHlB3sAAAuD ] [info] [94mupdate_sub_status/2[0m
 2019-09-09 UTC 12:00:17.352 [request_id=FcLDW1a88dHlB3sAAAuD ] [info] Sent 200 in 9ms
+2019-09-09 UTC 20:47:43.414 [] [info] Starting server at http://localhost:4000/
+2019-09-09 UTC 21:17:54.011 [] [info] Starting server at http://localhost:4000/
