@@ -246,7 +246,7 @@ defmodule TenbewGw.Endpoint do
 
   # STEP 3 - Check if the MSISDN is already Subscribed
   def valid_msisdn_existance(msisdn, status) do
-    "valid_msisdn_existance/2 :: msisdn: #{inspect(msisdn)}, status: #{inspect(status)}" |> color_info(:yellow)
+    "valid_msisdn_existance/2" |> color_info(:yellow)
     # This processes queries Tenbew database to see if the MSISDN is registered in the subscriber database and listed as either pending or active
     if Subscription.exists?(msisdn) do
       case Subscription.get_status(msisdn) do
@@ -264,7 +264,9 @@ defmodule TenbewGw.Endpoint do
     "valid_msisdn_existance/1" |> color_info(:yellow)
     if Subscription.exists?(msisdn) do
       case Subscription.get_status(msisdn) do
-        str when str in ["pending", "active"] -> true
+        # str when str in ["pending", "active"] -> true
+        "pending" -> true
+        "active" -> false
         _ -> false
       end
     else
@@ -275,8 +277,39 @@ defmodule TenbewGw.Endpoint do
     false
   end
 
+  def validate_daily_payment(msisdn) do
+    "validate_daily_payment/1" |> color_info(:yellow)
+    # This process checks the database to ensure that the subscriber does not get charged twice.
+    # This could potentially be the case when a subsequent retry of a failed charge shows that the subscriber has already been charged but QQ has not been updated
+    if Payment.exists?(msisdn) do
+      subscriber = Subscription.get_by_msisdn(msisdn) # |> Repo.preload([:payments])
+      if not is_nil(subscriber) do
+        # Payment.is_paid(subscription_id)
+        payment = Payment.last_payment_by_subscriber(subscriber.id)
+        if not is_nil(payment) do
+          if payment.paid == true do
+            difference = Date.diff(payment.updated_at, NaiveDateTime.utc_now) |> abs
+            difference == 0
+          else
+            false
+          end
+        else
+          false
+        end
+      else
+        false
+      end
+    else
+      false
+    end
+    # false
+  rescue e ->
+    "validate_daily_payment/1 exception: #{inspect e}" |> color_info(:red)
+  end
+
   # STEP 4 - Call up Cell C DOI Service
   def call_cell_c(endpoint, map) do
+    "call_cell_c/2" |> color_info(:yellow)
     # The DOI service (double opt in) is a legal requirement.
     # It allows the subscriber to confirm that they have indeed made the decision to subscriber.
     # When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
@@ -296,13 +329,14 @@ defmodule TenbewGw.Endpoint do
     response =
       case request(base_url, method, headers, payload, 30) do
         {200, response} -> response
-
-        {st, error} -> "code: #{st}, message: #{error}"
-
+        {st, error} ->
+          if error == "undefined error" do
+            "code: #{st}, response: DOI connection error"
+          else
+            "code: #{st}, response: #{error}"
+          end
         {:error, :econnrefused} -> "connection error: econnrefused"
-
         {:econnrefused, err} -> "connection error: #{inspect(err)}"
-
         _ -> "general error calling DOI API with payload: #{payload}"
       end
 
@@ -325,7 +359,10 @@ defmodule TenbewGw.Endpoint do
       "#{message}" |> color_info(:green)
       msg = stringify_message(endpoint)
       service_id = response["service_id"] || "none"
-      returned_data = %{ service_id: service_id }
+      returned_data = %{
+        status: "active",
+        service_id: service_id
+      }
       response_message = if endpoint == "cancel_sub" do
                             "cancelled successfully"
                           else
@@ -340,17 +377,29 @@ defmodule TenbewGw.Endpoint do
         "response" => %{success: response_message}
       }
     end
-  rescue e ->
-    "call_cell_c/2 :: exception : #{inspect e}" |> color_info(:red)
-    %{
-      "code" => 500,
-      "data" => nil,
-      "response" => nil,
-      "payload" => map,
-      "status" => "pending",
-      "message" => "Exception Raised",
-      "error" => %{error: "#{inspect e}"}
-    }
+  rescue
+    e in ApiError ->
+      "call_cell_c/2 :: ApiError Exception : #{inspect e.message}" |> color_info(:red)
+      %{
+        "code" => 500,
+        "data" => nil,
+        "response" => nil,
+        "payload" => map,
+        "status" => "pending",
+        "message" => "ApiError",
+        "error" => %{error: "#{inspect e.message}"}
+      }
+    e ->
+      "call_cell_c/2 :: exception : #{inspect e}" |> color_info(:red)
+      %{
+        "code" => 500,
+        "data" => nil,
+        "response" => nil,
+        "payload" => map,
+        "status" => "pending",
+        "message" => "Exception Raised",
+        "error" => %{error: "#{inspect e.message}"}
+      }
   end
 
   defp stringify_message(endpoint) do
@@ -360,30 +409,6 @@ defmodule TenbewGw.Endpoint do
       "notify_sub" -> "notified"
       _ -> "processed"
     end
-  end
-
-  # STEP 5 - Update Database, send code 200 to QQ
-  def update_subscription_details(msisdn, data) do
-    # The subscription database gets updated to say that the sub has paid for the day
-    subscription = Subscription.get_by_msisdn(msisdn)
-
-    if is_nil(subscription) do
-      # create_subscription(msisdn, status)
-      "update_subscription_details/2 error : subscription not found" |> color_info(:red)
-    else
-      # update_subscription_status(subscription, status)
-      services = data[:service_id] || subscription.services # TODO: update this to append any existing services
-      status = data[:status] || subscription.status
-      update_attrs = %{
-        msisdn: msisdn,
-        status: status,
-        validated: true,
-        services: services
-      }
-      update_subscription(subscription, update_attrs)
-    end
-  rescue e ->
-    "update_subscription_details/2 exception : #{inspect e}" |> color_info(:red)
   end
 
 
@@ -409,22 +434,18 @@ defmodule TenbewGw.Endpoint do
 
     # 4. Call up Cell C DOI Service
     response = call_cell_c("add_sub", map)
-    is_success? =
-      if (response["code"] == 200 and is_nil(response["error"])), do: true, else: false
 
-    # Received Pending Status
-    unless is_success? do
-      raise ApiError, message: "invalid request or subscriber from DOI response"
-    end
-
-    # 5. Update Database, send code 200 to QQ
-    unless is_nil(response["data"]) do
+    if response["code"] == 200 do
+      # 5. Update Database, send code 200 to QQ
       update_subscription_details(msisdn, response["data"])
+      status = 200
+      message = response["response"]
+      r_json(~m(status message)s)
+    else
+      status = response["code"]
+      message = response["error"]
+      r_json(~m(status message)s)
     end
-
-    status = if is_success?, do: 200, else: response["code"]
-    message = if is_success?, do: response["response"], else: response["error"]
-    r_json(~m(status message)s)
   rescue
     e in ValidationError ->
       "Validation Error: #{e.message}" |> color_info(:red)
@@ -439,81 +460,9 @@ defmodule TenbewGw.Endpoint do
     e ->
       "Exception: #{inspect(e)}" |> color_info(:red)
       status = 500
-      message = "error occured"
+      # message = "error occured"
+      message = "exception raised"
       r_json(~m(status message)s)
-  end
-
-
-  # STEP 5 - Update Database, send code 200 to QQ
-  def create_payment_details(msisdn) do
-    subscription = Subscription.get_by_msisdn(msisdn)
-
-    unless is_nil(subscription) do
-      payment_date = NaiveDateTime.utc_now  #|| subscription.inserted_at |> NaiveDateTime.from_iso8601!()
-      qq_charges = Application.get_env(:tenbew_gw, :charges)
-      service = qq_charges[:code] || subscription.services
-      charge = qq_charges[:value]
-      amount =
-        case charge do
-          v when is_nil(v) -> 0
-          v when is_integer(v) -> v
-          v when is_binary(v) -> String.to_integer(v)
-        end
-      attrs = %{
-        paid: true,
-        msisdn: msisdn,
-        amount: amount,
-        status: "paid",
-        service_type: service,
-        paid_at: payment_date,
-        subscription_id: subscription.id
-      }
-      case Payment.create_payment(attrs) do
-        {:ok, payment} ->
-          "Payment Success: #{inspect(payment)}" |> color_info(:green)
-
-        {:error, %Ecto.Changeset{} = changeset} ->
-          "Payment Error: #{changeset_errors(changeset)}" |> color_info(:red)
-
-        _ -> "Payment Exception with attrs: #{inspect(attrs)}" |> color_info(:red)
-      end
-    end
-    rescue e -> "create_payment_details/2 exception: #{inspect e}" |> color_info(:red)
-  end
-
-  # 7. Is MSISDN already charged for the day?
-  def validate_daily_payment(msisdn) do
-    # This process checks the database to ensure that the subscriber does not get charged twice.
-    # This could potentially be the case when a subsequent retry of a failed charge shows that the subscriber has already been charged but QQ has not been updated
-    if Payment.exists?(msisdn) do
-      subscriber = Subscription.get_by_msisdn(msisdn) |> Repo.preload([:payments])
-
-      if not is_nil(subscriber) do
-        payment = Payment.last_payment_by_subscriber(subscriber.id)
-
-        if not is_nil(payment) do
-          # end_date = NaiveDateTime.utc_now
-          # start_date = payment.inserted_at || payment.paid_at
-          # difference = Date.diff(start_date, end_date) |> abs
-          # case NaiveDateTime.compare(start_date, end_date) do
-          #   :gt -> false
-          #   :lt -> false
-          #    _  -> true
-          # end
-          difference = Date.diff(payment.updated_at, NaiveDateTime.utc_now) |> abs
-          difference == 0
-        else
-          false
-        end
-      else
-        false
-      end
-    else
-      false
-    end
-    # false
-  rescue e ->
-    "validate_daily_payment/1 exception: #{inspect e}" |> color_info(:red)
   end
 
   def charge_sub(conn, opts) do
@@ -643,9 +592,75 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-  defp create_subscription(msisdn, status \\ "pending") do
+  # STEP 5 - Update Database, send code 200 to QQ
+
+  def update_subscription_details(msisdn, data) do
+    subscription = Subscription.get_by_msisdn(msisdn)
+
+    if is_nil(subscription) do
+      create_subscription(msisdn, data)
+    else
+      # TODO: update this to append any existing services
+      services = data[:service_id] || subscription.services
+      status = data[:status] || subscription.status
+      update_attrs = %{
+        msisdn: msisdn,
+        status: status,
+        validated: true,
+        services: services
+      }
+      update_subscription(subscription, update_attrs)
+    end
+  rescue e ->
+    "update_subscription_details/2 exception : #{inspect e}" |> color_info(:red)
+  end
+
+  def create_payment_details(msisdn) do
+    subscription = Subscription.get_by_msisdn(msisdn)
+
+    unless is_nil(subscription) do
+      payment_date = NaiveDateTime.utc_now  #|| subscription.inserted_at |> NaiveDateTime.from_iso8601!()
+      qq_charges = Application.get_env(:tenbew_gw, :charges)
+      service = qq_charges[:code] || subscription.services
+      charge = qq_charges[:value]
+      amount =
+        case charge do
+          v when is_nil(v) -> 0
+          v when is_integer(v) -> v
+          v when is_binary(v) -> String.to_integer(v)
+        end
+      attrs = %{
+        paid: true,
+        msisdn: msisdn,
+        amount: amount,
+        status: "paid",
+        service_type: service,
+        paid_at: payment_date,
+        subscription_id: subscription.id
+      }
+      case Payment.create_payment(attrs) do
+        {:ok, payment} ->
+          "Payment Success: #{inspect(payment)}" |> color_info(:green)
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          "Payment Error: #{changeset_errors(changeset)}" |> color_info(:red)
+
+        _ -> "Payment Exception with attrs: #{inspect(attrs)}" |> color_info(:red)
+      end
+    end
+    rescue e -> "create_payment_details/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
+  defp create_subscription(msisdn, data \\ nil) do
     "create_subscription/2 :: #{inspect(msisdn)}" |> color_info(:yellow)
-    attrs = %{msisdn: "#{msisdn}", status: status || "pending"}
+    services = if is_nil(data), do: "00", else: data[:service_id] || "00"
+    status = if is_nil(data), do: "pending", else: data[:status] || "pending"
+    attrs = %{
+      msisdn: msisdn,
+      status: status,
+      validated: true,
+      services: services
+    }
 
     case Subscription.create_subscription(attrs) do
       {:ok, subscription} ->
@@ -683,7 +698,7 @@ defmodule TenbewGw.Endpoint do
       "Error updating subscription: subscription not found" |> color_info(:red)
     end
   rescue e ->
-    "update_subscription/1 exception: #{inspect e}" |> color_info(:red)
+    "update_subscription/2 exception: #{inspect e}" |> color_info(:red)
   end
 
   defp update_subscription_status(subscription, status) do
@@ -925,6 +940,25 @@ defmodule TenbewGw.Endpoint do
 
   defp valid_status_options do
     ["pending", "active"]
+  end
+
+  def valid_msisdn_presence(msisdn) do
+    "valid_msisdn_presence/1" |> color_info(:yellow)
+    if Subscription.exists?(msisdn), do: true, else: false
+  rescue e ->
+    "valid_msisdn_presence/1 exception : #{inspect e}" |> color_info(:red)
+    false
+  end
+
+  def valid_msisdn_status(msisdn, status) do
+    "valid_msisdn_status/2 :: msisdn: #{inspect(msisdn)}, status: #{inspect(status)}" |> color_info(:yellow)
+    case Subscription.get_status(msisdn) do
+      str when str == status -> true
+      _ -> false
+    end
+  rescue e ->
+    "valid_msisdn_status/2 exception : #{inspect e}" |> color_info(:red)
+    false
   end
 
   # TODO - REMOVE
@@ -1329,5 +1363,59 @@ defmodule TenbewGw.Endpoint do
     e -> "call_cell_c/1 :: exception : #{inspect e}" |> color_info(:red)
   end
 
+  # def bckp_add_sub_2(conn, opts) do
+  #   map = req_query_params(conn)
+  #   msisdn = Map.get(map, "msisdn", "")
+  #   "GET /AddSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
+  #
+  #   # 1.Receive add subscriber request
+  #   unless valid_parameters(map) do
+  #     raise ValidationError, message: "invalid params, missing details", status: 500
+  #   end
+  #
+  #   # 2. Conduct basic MSISDN Validation
+  #   unless valid_msisdn_format(msisdn) do
+  #     raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+  #   end
+  #
+  #   # 3. Check if the MSISDN is already Subscribed
+  #   unless valid_msisdn_presence(msisdn) do
+  #     raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+  #   end
+  #   unless valid_msisdn_status(msisdn, "pending") do
+  #     raise ValidationError, message: "invalid msisdn, incorrect status", status: 502
+  #   end
+  #
+  #   # 4. Call up Cell C DOI Service
+  #   response = call_cell_c("add_sub", map)
+  #   is_success? = if (response["code"] == 200 and is_nil(response["error"])), do: true, else: false
+  #
+  #   unless is_success? do
+  #     raise ApiError, message: "invalid DOI response, #{response["error"]}"
+  #   end
+  #
+  #   # 5. Update Database, send code 200 to QQ
+  #   update_subscription_details(msisdn, response["data"])
+  #   status = if is_success?, do: 200, else: response["code"]
+  #   message = if is_success?, do: response["response"], else: response["error"]
+  #   r_json(~m(status message)s)
+  # rescue
+  #   e in ValidationError ->
+  #     "Validation Error: #{e.message}" |> color_info(:red)
+  #      status = e.status
+  #      message = e.message
+  #      r_json(~m(status message)s)
+  #   e in ApiError ->
+  #     "API Error: #{e.message}" |> color_info(:red)
+  #     status = 501
+  #     message = e.message
+  #     r_json(~m(status message)s)
+  #   e ->
+  #     "Exception: #{inspect(e)}" |> color_info(:red)
+  #     status = 500
+  #     # message = "error occured"
+  #     message = "exception raised"
+  #     r_json(~m(status message)s)
+  # end
 
 end

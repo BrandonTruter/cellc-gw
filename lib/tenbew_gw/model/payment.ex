@@ -74,6 +74,23 @@ defmodule TenbewGw.Model.Payment do
     e -> nil
   end
 
+  def is_paid(subscription_id) do
+    payments =
+      from(p in Payment,
+        where: fragment("inserted_at > NOW() at time zone 'utc' - INTERVAL '1 day'"),
+        where: p.subscription_id == ^subscription_id,
+        where: p.paid == true
+      )
+      |> Repo.all()
+      # |> List.last()
+    case length(payments) do
+      1 -> true
+      _ -> false
+    end
+  rescue
+    e -> false
+  end
+
   def get_first_payment() do
     Payment |> Repo.all() |> List.first()
   end

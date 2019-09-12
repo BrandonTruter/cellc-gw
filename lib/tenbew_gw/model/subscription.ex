@@ -76,7 +76,7 @@ defmodule TenbewGw.Model.Subscription do
   end
 
   def get_by_msisdn!(msisdn) do
-    Subscription |> Repo.get_by!(msisdn: msisdn)
+    Subscription |> Repo.get_by!(msisdn: msisdn) |> Repo.preload([:payments])
   rescue e ->
     nil
   end
@@ -84,6 +84,7 @@ defmodule TenbewGw.Model.Subscription do
     from(s in Subscription, where: s.msisdn == ^msisdn)
       |> Repo.all()
       |> List.first()
+      |> Repo.preload([:payments])
   rescue e ->
     nil
   end
@@ -132,7 +133,7 @@ defmodule TenbewGw.Model.Subscription do
 
   def get_payments_by_msisdn(msisdn) do
     s = get_by_msisdn(msisdn)
-    query = from p in Payment, where: p.msisdn == ^msisdn or p.subscription_id == ^s.id
+    query = from p in Payment, where: p.msisdn == ^msisdn and p.subscription_id == ^s.id
     Repo.all(query)
   rescue e ->
     nil
