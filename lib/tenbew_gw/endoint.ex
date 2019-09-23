@@ -537,8 +537,6 @@ defmodule TenbewGw.Endpoint do
   end
 
   def cancel_sub(conn, opts) do
-    # This takes place when the subscriber no longer wants subscribe for the content.
-    # They initiate the cancel subscription from QQ portal
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
     "GET /CancelSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
@@ -546,30 +544,27 @@ defmodule TenbewGw.Endpoint do
     is_valid? =
       if valid_parameters(map) do
         if valid_msisdn_format(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-        if valid_msisdn_existance(msisdn) == false, do: true, else: raise ValidationError, message: "invalid msisdn, not subscribed", status: 502
+        if valid_msisdn_presence(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, not subscribed", status: 502
+        if valid_msisdn_status(msisdn, "active"), do: true, else: raise ValidationError, message: "invalid msisdn, subscription not active", status: 502
       else
         false
       end
 
     response = call_cell_c("cancel_sub", map)
-
-    # doi_resp_code =
-      # if is_nil(response["error"]), do: 200, else: response["code"]
-
-    # doi_resp_msg =
-      # if is_nil(response["error"]), do: "cancelled successfully", else: response["message"]
-
-    # status =
-    #   case is_valid? do
-    #     true -> doi_resp_code
-    #     false -> 500
-    #     _ -> 500
-    #   end
-
     status = response["code"]
-
     is_success? =
-      if (is_valid? and status == 200), do: true, else: false
+      if (is_valid? == true and status == 200), do: true, else: false
+
+    if is_success? do
+      subscriber = Subscription.get_by_msisdn(msisdn)
+
+      case update_subscription_status(subscriber, "cancelled") do
+        {:ok, subscription} -> "subscription status saved" |> color_info(:green)
+
+        {:error, %Ecto.Changeset{} = cs} ->
+          "Error updating status: #{inspect(changeset_errors(cs))}" |> color_info(:red)
+      end
+    end
 
     message =
       case is_success? do
@@ -585,6 +580,11 @@ defmodule TenbewGw.Endpoint do
        status = e.status
        message = e.message
        r_json(~m(status message)s)
+    e in ApiError ->
+      "API Error: #{e.message}" |> color_info(:red)
+      status = 501
+      message = e.message
+      r_json(~m(status message)s)
     e ->
       "Exception: #{inspect(e)}" |> color_info(:red)
       status = 500
@@ -702,7 +702,7 @@ defmodule TenbewGw.Endpoint do
   end
 
   defp update_subscription_status(subscription, status) do
-    "update_subscription_status/1 :: #{inspect(status)}" |> color_info(:yellow)
+    "update_subscription_status/2 :: #{inspect(status)}" |> color_info(:yellow)
 
     {:ok, subscription} = Subscription.set_status(subscription, %{"status" => status})
   rescue
@@ -1293,6 +1293,62 @@ defmodule TenbewGw.Endpoint do
       status = 501
       message = e.message
       r_json(~m(status message)s)
+    e ->
+      "Exception: #{inspect(e)}" |> color_info(:red)
+      status = 500
+      message = "error occured"
+      r_json(~m(status message)s)
+  end
+
+  def bkp_cancel_sub(conn, opts) do
+    # This takes place when the subscriber no longer wants subscribe for the content.
+    # They initiate the cancel subscription from QQ portal
+    map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    "GET /CancelSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
+
+    is_valid? =
+      if valid_parameters(map) do
+        if valid_msisdn_format(msisdn), do: true, else: raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+        if valid_msisdn_existance(msisdn) == false, do: true, else: raise ValidationError, message: "invalid msisdn, not subscribed", status: 502
+      else
+        false
+      end
+
+    response = call_cell_c("cancel_sub", map)
+
+    # doi_resp_code =
+      # if is_nil(response["error"]), do: 200, else: response["code"]
+
+    # doi_resp_msg =
+      # if is_nil(response["error"]), do: "cancelled successfully", else: response["message"]
+
+    # status =
+    #   case is_valid? do
+    #     true -> doi_resp_code
+    #     false -> 500
+    #     _ -> 500
+    #   end
+
+    status = response["code"]
+
+    is_success? =
+      if (is_valid? and status == 200), do: true, else: false
+
+    message =
+      case is_success? do
+        true -> response["response"]
+        false -> response["error"]
+        _ -> "cancellation failed"
+      end
+
+    r_json(~m(status message)s)
+  rescue
+    e in ValidationError ->
+      "Validation Error: #{e.message}" |> color_info(:red)
+       status = e.status
+       message = e.message
+       r_json(~m(status message)s)
     e ->
       "Exception: #{inspect(e)}" |> color_info(:red)
       status = 500
