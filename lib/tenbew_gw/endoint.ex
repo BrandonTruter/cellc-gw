@@ -42,6 +42,8 @@ defmodule TenbewGw.Endpoint do
 
   @content_type "application/json"
 
+  @retries_schedule [6,10,14,18,22]
+
   def child_spec(opts) do
     %{
       id: __MODULE__,
@@ -413,6 +415,30 @@ defmodule TenbewGw.Endpoint do
   end
 
 
+  def charge_retries(msisdn, data) do
+    @retries_schedule
+    |> Enum.map(fn x -> x * 3_600 * 1_000 end)
+    |> Enum.each(fn x -> :timer.apply_after(__MODULE__, :charge_retry, [msisdn, data]) end)
+  end
+
+  def charge_retry(msisdn, data) do
+    func = "charge_retry/2 ::"
+    "#{func} msisdn: #{inspect(msisdn)}, data: #{inspect(data)}" |> color_info(:lightblue)
+
+    if validate_daily_payment(msisdn) do
+      "#{func} MSISDN already charged for the day" |> color_info(:yellow)
+    else
+      response = call_cell_c("charge_sub", data)
+
+      if response["code"] == 200 do
+        create_payment_details(msisdn)
+        update_subscription_details(msisdn, response["data"])
+        "#{func} MSISDN charged, DB updated" |> color_info(:green)
+      end
+    end
+  end
+
+
   def add_sub(conn, opts) do
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
@@ -495,6 +521,9 @@ defmodule TenbewGw.Endpoint do
               r_json(~m(status message)s)
             else
               # TODO - retry every 4 hours
+              pid = spawn_link(__MODULE__,  :charge_retries , [msisdn, map])
+              "Spawning #{inspect pid} calling charge_retries" |> color_info(:yellow)
+
               status = 504
               message = response["error"]
               r_json(~m(status message)s)
