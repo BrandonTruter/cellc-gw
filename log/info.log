@@ -1122,3 +1122,53 @@ Request: POST /api/v1/update_sub_status
 2019-09-23 UTC 11:36:26.638 [request_id=FccOLhnnXigNfRUAADhi ] [info] [31mcancel_sub request failed, "code: 403, response: DOI connection error"[0m
 2019-09-23 UTC 11:36:26.638 [request_id=FccOLhnnXigNfRUAADhi ] [info] Sent 200 in 310ms
 2019-09-23 UTC 11:36:26.638 [] [info] [31m%{arity: 2, error: "%Poison.SyntaxError{message: \"Unexpected token: <\", token: \"<\"}", file: "lib/poison/parser.ex", function: "parse!", line: 56, module: "Elixir.Poison.Parser"}[0m
+2019-09-23 UTC 12:02:54.238 [] [info] Starting server at http://localhost:4000/
+2019-09-23 UTC 12:03:26.294 [] [info] GET /CancelSub
+2019-09-23 UTC 12:03:26.314 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [94mGET /CancelSub :: msisdn: 27124222241[0m
+2019-09-23 UTC 12:03:26.314 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mvalid_parameters/1[0m
+2019-09-23 UTC 12:03:26.314 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mvalid_msisdn_format/1[0m
+2019-09-23 UTC 12:03:26.321 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mvalid_msisdn_presence/1[0m
+2019-09-23 UTC 12:03:26.386 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mvalid_msisdn_status/2 :: msisdn: "27124222241", status: "active"[0m
+2019-09-23 UTC 12:03:26.409 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mcall_cell_c/2[0m
+2019-09-23 UTC 12:03:26.419 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [34mURL "http://localhost:3000/api/v1/cancel_sub" BODY "{\"msisdn\":\"27124222241\"}"[0m
+2019-09-23 UTC 12:03:30.218 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mref: #Reference<0.4136434101.2119958530.135941>[0m
+2019-09-23 UTC 12:03:30.222 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mheaders at loop: [{"Content-Type", "application/json; charset=utf-8"}, {"ETag", "W/\"8db5b7210a2493aa0fb9501d9ec3ec73\""}, {"Cache-Control", "max-age=0, private, must-revalidate"}, {"X-Request-Id", "18ae1168-2d3e-4b89-abd4-cda88d5ec0c1"}, {"X-Runtime", "3.583737"}, {"Transfer-Encoding", "chunked"}][0m
+2019-09-23 UTC 12:03:30.222 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mref: #Reference<0.4136434101.2119958530.135941>[0m
+2019-09-23 UTC 12:03:30.223 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mref: #Reference<0.4136434101.2119958530.135941>[0m
+2019-09-23 UTC 12:03:30.228 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [35mhackney: status: 200 "{\"@xmlns:ns2\":\"http://wasp.doi.soap.protocol.cellc.co.za\"}"[0m
+2019-09-23 UTC 12:03:30.240 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [32mcancel_sub processed successfully, %{"@xmlns:ns2" => "http://wasp.doi.soap.protocol.cellc.co.za"}[0m
+2019-09-23 UTC 12:03:30.242 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [33mupdate_subscription_status/2 :: "cancelled"[0m
+2019-09-23 UTC 12:03:30.441 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] [32msubscription status saved[0m
+2019-09-23 UTC 12:03:30.445 [request_id=FccPp0eNB9PFBQAAAAZD ] [info] Sent 200 in 4151ms
+2019-09-23 UTC 12:04:49.850 [] [info] GET /CancelSub
+2019-09-23 UTC 12:04:49.851 [request_id=FccPurvNc4ahJqoAAAnC ] [info] [94mGET /CancelSub :: msisdn: 27124222241[0m
+2019-09-23 UTC 12:04:49.851 [request_id=FccPurvNc4ahJqoAAAnC ] [info] [33mvalid_parameters/1[0m
+2019-09-23 UTC 12:04:49.851 [request_id=FccPurvNc4ahJqoAAAnC ] [info] [33mvalid_msisdn_format/1[0m
+2019-09-23 UTC 12:04:49.851 [request_id=FccPurvNc4ahJqoAAAnC ] [info] [33mvalid_msisdn_presence/1[0m
+2019-09-23 UTC 12:04:49.852 [request_id=FccPurvNc4ahJqoAAAnC ] [info] [33mvalid_msisdn_status/2 :: msisdn: "27124222241", status: "active"[0m
+2019-09-23 UTC 12:04:49.856 [request_id=FccPurvNc4ahJqoAAAnC ] [info] [31mValidation Error: invalid msisdn, subscription not active[0m
+2019-09-23 UTC 12:04:49.856 [request_id=FccPurvNc4ahJqoAAAnC ] [info] Sent 200 in 5ms
+2019-09-23 UTC 12:05:33.985 [] [info] GET /AddSub
+2019-09-23 UTC 12:05:33.986 [request_id=FccPxQJxe73fov8AAADk ] [info] [94mGET /AddSub :: msisdn: 27124232247[0m
+2019-09-23 UTC 12:05:33.986 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mvalid_parameters/1[0m
+2019-09-23 UTC 12:05:33.986 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mvalid_msisdn_format/1[0m
+2019-09-23 UTC 12:05:33.986 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mvalid_msisdn_existance/2[0m
+2019-09-23 UTC 12:05:33.989 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mcall_cell_c/2[0m
+2019-09-23 UTC 12:05:33.989 [request_id=FccPxQJxe73fov8AAADk ] [info] [34mURL "http://localhost:3000/api/v1/add_sub" BODY "{\"msisdn\":\"27124232247\"}"[0m
+2019-09-23 UTC 12:05:38.803 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mref: #Reference<0.4136434101.2119958531.133244>[0m
+2019-09-23 UTC 12:05:38.804 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mheaders at loop: [{"Content-Type", "application/json; charset=utf-8"}, {"ETag", "W/\"f1f0f39e33eea253bc5665c8b6024f09\""}, {"Cache-Control", "max-age=0, private, must-revalidate"}, {"X-Request-Id", "d757e33f-9b05-459b-8058-281ada06cd3e"}, {"X-Runtime", "4.809165"}, {"Transfer-Encoding", "chunked"}][0m
+2019-09-23 UTC 12:05:38.804 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mref: #Reference<0.4136434101.2119958531.133244>[0m
+2019-09-23 UTC 12:05:38.804 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mref: #Reference<0.4136434101.2119958531.133244>[0m
+2019-09-23 UTC 12:05:38.804 [request_id=FccPxQJxe73fov8AAADk ] [info] [35mhackney: status: 200 "{\"result\":\"216\",\"service_id\":null,\"wasp_reference\":\"00\",\"wasp_tid\":\"QQChina\"}"[0m
+2019-09-23 UTC 12:05:38.809 [request_id=FccPxQJxe73fov8AAADk ] [info] [32madd_sub processed successfully, %{"result" => "216", "service_id" => nil, "wasp_reference" => "00", "wasp_tid" => "QQChina"}[0m
+2019-09-23 UTC 12:05:38.810 [request_id=FccPxQJxe73fov8AAADk ] [info] [33mcreate_subscription/2 :: "27124232247"[0m
+2019-09-23 UTC 12:05:38.978 [request_id=FccPxQJxe73fov8AAADk ] [info] [32mSubscription created successfully: %TenbewGw.Model.Subscription{__meta__: #Ecto.Schema.Metadata<:loaded, "subscriptions">, id: "f63c08f4-cc15-4f16-ba02-3c051b0ba9c1", inserted_at: ~N[2019-09-23 12:05:38], msisdn: "27124232247", payments: #Ecto.Association.NotLoaded<association :payments is not loaded>, services: "none", status: "active", updated_at: ~N[2019-09-23 12:05:38], validated: true}[0m
+2019-09-23 UTC 12:05:38.978 [request_id=FccPxQJxe73fov8AAADk ] [info] Sent 200 in 4992ms
+2019-09-23 UTC 12:05:43.748 [] [info] GET /CancelSub
+2019-09-23 UTC 12:05:43.748 [request_id=FccPx0hXK_n83eYAAAaD ] [info] [94mGET /CancelSub :: msisdn: 27124222241[0m
+2019-09-23 UTC 12:05:43.748 [request_id=FccPx0hXK_n83eYAAAaD ] [info] [33mvalid_parameters/1[0m
+2019-09-23 UTC 12:05:43.748 [request_id=FccPx0hXK_n83eYAAAaD ] [info] [33mvalid_msisdn_format/1[0m
+2019-09-23 UTC 12:05:43.748 [request_id=FccPx0hXK_n83eYAAAaD ] [info] [33mvalid_msisdn_presence/1[0m
+2019-09-23 UTC 12:05:43.750 [request_id=FccPx0hXK_n83eYAAAaD ] [info] [33mvalid_msisdn_status/2 :: msisdn: "27124222241", status: "active"[0m
+2019-09-23 UTC 12:05:43.752 [request_id=FccPx0hXK_n83eYAAAaD ] [info] [31mValidation Error: invalid msisdn, subscription not active[0m
+2019-09-23 UTC 12:05:43.752 [request_id=FccPx0hXK_n83eYAAAaD ] [info] Sent 200 in 3ms

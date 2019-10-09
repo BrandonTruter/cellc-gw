@@ -309,6 +309,7 @@ defmodule TenbewGw.Endpoint do
 
   # STEP 4 - Call up Cell C DOI Service
   def call_cell_c(endpoint, map) do
+    # TODO Needs work
     "call_cell_c/2" |> color_info(:yellow)
     # The DOI service (double opt in) is a legal requirement.
     # It allows the subscriber to confirm that they have indeed made the decision to subscriber.
@@ -358,7 +359,7 @@ defmodule TenbewGw.Endpoint do
       message = "#{endpoint} processed successfully, #{inspect(response)}"
       "#{message}" |> color_info(:green)
       msg = stringify_message(endpoint)
-      service_id = response["service_id"] || "none"
+      service_id = response["service_id"]
       returned_data = %{
         status: "active",
         service_id: service_id
@@ -366,7 +367,7 @@ defmodule TenbewGw.Endpoint do
       response_message = if endpoint == "cancel_sub" do
                             "cancelled successfully"
                           else
-                            "#{msg}, serviceID: #{service_id}"
+                            if is_nil(service_id), do: msg , else: "#{msg}, serviceID: #{service_id}"
                           end
       %{
         "code" => 200,
@@ -501,15 +502,21 @@ defmodule TenbewGw.Endpoint do
           end
         else
           # 6. Initiate the Cell C DOI Process
-          if Subscription.exists?(msisdn) do
-            response = call_cell_c("notify_sub", map)
-            status   = 502
-            message  =
-              if response["code"] == 200, do: response["response"], else: "subscriber not active, notification sent"
-
-            r_json(~m(status message)s)
+          if valid_msisdn_status(msisdn, "cancelled") do
+            # additional validation step requested by Kibata on Flock
+            raise ValidationError, message: "invalid msisdn, subscription is cancelled", status: 503
           else
-            raise ValidationError, message: "invalid msisdn, subscriber does not exist", status: 502
+            if Subscription.exists?(msisdn) do
+              response = call_cell_c("notify_sub", map)
+              status   = 503
+              message  =
+                if response["code"] == 200, do: response["response"], else: "subscriber notified"
+
+              r_json(~m(status message)s)
+            else
+              raise ValidationError, message: "invalid msisdn, MSISDN not subscribed", status: 503
+              # raise ValidationError, message: "invalid msisdn, subscriber does not exist", status: 502
+            end
           end
         end
       else
