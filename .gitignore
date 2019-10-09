@@ -10,6 +10,9 @@
 # Where 3rd-party dependencies like ExDoc output generated docs.
 /doc/
 
+# All log files
+/log/
+
 # Ignore .fetch files in case you like to edit your project deps locally.
 /.fetch
 
@@ -25,7 +28,5 @@ tenbew_gw-*.tar
 dev_error_logger.txt
 
 *.DS_Store
-
-/log/*
 
 .tool-versions

@@ -35,8 +35,6 @@ defmodule TenbewGw.MixProject do
       {:hackney, github: "benoitc/hackney", override: true},
       {:short_maps, github: "whatyouhide/short_maps"},
       {:logger_file_backend, "~> 0.0.10"}
-      # {:logger_logstash_backend, "~> 5.0.0", only: [:dev]},
-      # {:timex, "~> 3.0"}
     ]
   end
 end
