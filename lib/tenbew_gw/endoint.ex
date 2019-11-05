@@ -266,8 +266,7 @@ defmodule TenbewGw.Endpoint do
     "valid_msisdn_existance/1" |> color_info(:yellow)
     if Subscription.exists?(msisdn) do
       case Subscription.get_status(msisdn) do
-        # str when str in ["pending", "active"] -> true
-        "pending" -> true
+        str when str in ["cancelled", "pending"] -> true
         "active" -> false
         _ -> false
       end
@@ -455,7 +454,8 @@ defmodule TenbewGw.Endpoint do
     end
 
     # 3. Check if the MSISDN is already Subscribed
-    unless valid_msisdn_existance(msisdn, "pending") do
+    # unless valid_msisdn_existance(msisdn, "pending") do
+    unless valid_msisdn_existance(msisdn) do
       raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
     end
 
