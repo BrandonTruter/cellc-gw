@@ -45,8 +45,4 @@ config :logger, :error,
   format: "$date UTC $time [$metadata] [$level] $message\n",
   level: :error
 
-config :tenbew_gw, :charges,
-  code: "DOI005",
-  value: "5"
-
 import_config "#{Mix.env()}.exs"

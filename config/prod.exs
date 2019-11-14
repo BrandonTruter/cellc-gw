@@ -9,3 +9,7 @@ config :tenbew_gw, TenbewGw.Repo,
   username: "root",
   password: "",
   hostname: "localhost"
+
+config :tenbew_gw, :charges,
+  code: "TENB00500",
+  value: "5"

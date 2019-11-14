@@ -6,3 +6,7 @@ config :tenbew_gw, TenbewGw.Repo,
   username: "root",
   password: "",
   hostname: "localhost"
+
+config :tenbew_gw, :charges,
+  code: "DOI005",
+  value: "5"
