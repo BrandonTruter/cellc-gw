@@ -35,7 +35,7 @@ defmodule TenbewGw.Endpoint do
   plug(Plug.RequestId)
   plug(Plug.Parsers,
     parsers: [:urlencoded, :json],
-    pass: ["application/json", "application/octet-stream"],
+    pass: ["application/json", "application/octet-stream", "text/xml"],
     json_decoder: Poison # Jason
   )
   plug(:dispatch)
@@ -523,23 +523,46 @@ defmodule TenbewGw.Endpoint do
   # Callback URL
 
   def cellc_cb1(conn, _opts) do
-    map = req_body_map(conn)
-    "cellc_cb1/2 :: map: #{inspect(map)}" |> color_info(:lightblue)
-    status = map |> Map.get("status")
-    msisdn = Map.get(map, "msisdn", "")
-    # "cellc_cb1/2" |> color_info(:lightblue)
-    # subscription = update_status(msisdn, status)
-    serviceID = "CC123456"
-    # msisdn = "27841234567"
-    ccTid = "888123"
-    # Result = "0"
+    func = "cellc_cb1/2"
+    func |> color_info(:lightblue)
 
-    r_json(~m(serviceID msisdn ccTid)s)
+    map = req_body_map(conn)
+    "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)
+
     # subscription = update_status(msisdn, status)
-    # r_json(~m(subscription)s)
+    msisdn = Map.get(map, "msisdn", nil)
+    msisdn = msisdn || "27841234567"
+    serviceID = "CC123456"
+    ccTid = "888123"
+
+    expected_response = """
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+      <soap:Body>
+        <ns2:getServicesResponse xmlns:ns2="http://wasp.doi.soap.protocol.WASP.co.za">
+          <return>
+            <serviceID>#{serviceID}</serviceID>
+            <msisdn>#{msisdn}</msisdn>
+            <Result>0</Result>
+            <ccTid>#{ccTid}</ccTid>
+          </return>
+        </ns2:getServicesResponse>
+      </soap:Body>
+    </soap:Envelope>
+    """
+
+    "#{func} :: expected_response: #{inspect(expected_response)}" |> color_info(:yellow)
+
+    conn
+    |> put_resp_content_type("text/xml")
+    |> send_resp(200, expected_response)
+
   rescue e ->
-    "update_sub_status/2 exception : #{inspect e}" |> color_info(:red)
+    "cellc_cb1/2 exception : #{inspect e}" |> color_info(:red)
+    conn
+    |> put_resp_content_type("text/plain")
+    |> send_resp(400, "failed to process callback request")
   end
+
 
   # Database Methods
 
