@@ -126,6 +126,8 @@ defmodule TenbewGw.Endpoint do
             "/add_payment" -> {__MODULE__, :add_payment, ["general"]}
             "/callback_url" -> {__MODULE__, :update_sub_status, ["general"]}
             "/update_sub_status" -> {__MODULE__, :update_sub_status, ["general"]}
+
+            "/cellc_cb1" -> {__MODULE__, :cellc_cb1, ["general"]}
             _ -> nil
           end
 
@@ -515,6 +517,28 @@ defmodule TenbewGw.Endpoint do
         "#{func} MSISDN charged, DB updated" |> color_info(:green)
       end
     end
+  end
+
+
+  # Callback URL
+
+  def cellc_cb1(conn, _opts) do
+    map = req_body_map(conn)
+    "cellc_cb1/2 :: map: #{inspect(map)}" |> color_info(:lightblue)
+    status = map |> Map.get("status")
+    msisdn = Map.get(map, "msisdn", "")
+    # "cellc_cb1/2" |> color_info(:lightblue)
+    # subscription = update_status(msisdn, status)
+    serviceID = "CC123456"
+    # msisdn = "27841234567"
+    ccTid = "888123"
+    # Result = "0"
+
+    r_json(~m(serviceID msisdn ccTid)s)
+    # subscription = update_status(msisdn, status)
+    # r_json(~m(subscription)s)
+  rescue e ->
+    "update_sub_status/2 exception : #{inspect e}" |> color_info(:red)
   end
 
   # Database Methods
