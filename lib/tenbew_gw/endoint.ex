@@ -534,7 +534,7 @@ defmodule TenbewGw.Endpoint do
   def charge_retries(msisdn, data) do
     @retries_schedule
     |> Enum.map(fn x -> x * 3_600 * 1_000 end)
-    |> Enum.each(fn x -> :timer.apply_after(__MODULE__, :charge_retry, [msisdn, data]) end)
+    |> Enum.each(fn x -> :timer.apply_after(x, __MODULE__, :charge_retry, [msisdn, data]) end)
   end
 
   def charge_retry(msisdn, data) do
