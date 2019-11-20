@@ -303,6 +303,7 @@ defmodule TenbewGw.Endpoint do
         if validate_presence(msisdn, "active") do
           # 7. Is MSISDN already charged for the day?
           if validate_daily_payment(msisdn) do
+            "Validation Error: already charged" |> color_info(:red)
             status = 200
             message = "already charged"
             r_json(~m(status message)s)
@@ -319,8 +320,7 @@ defmodule TenbewGw.Endpoint do
               r_json(~m(status message)s)
             else
               pid = spawn_link(__MODULE__,  :charge_retries , [msisdn, map])
-              "Spawning #{inspect pid} calling charge_retries" |> color_info(:yellow)
-
+              "Spawning #{inspect pid} calling charge_retries" |> color_info(:red)
               status = 504
               message = response["error"]
               r_json(~m(status message)s)
@@ -425,64 +425,61 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-
   # Cell C DOI Methods
 
-  def call_cell_c(endpoint, map) do
-    "call_cell_c/2" |> color_info(:yellow)
-    # The DOI service (double opt in) is a legal requirement.
-    # It allows the subscriber to confirm that they have indeed made the decision to subscriber.
-    # When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
-    # If the MSISDN is valid, Cell C returns a message that the subscriber is pending.
-    # Otherwise may reject the request because the subscriber is either not a Cell C subscriber or other reasons.
+  defp cellc_request(endpoint, msisdn) do
     method = :post
-    msisdn = Map.get(map, "msisdn", "")
     params = %{ "msisdn" => msisdn }
     payload = Poison.encode!(params)
     base_url = doi_api_url() <> "/" <> endpoint
     headers = [{"Content-Type", "application/json"}]
 
+    case request(base_url, method, headers, payload, 30) do
+      {200, response} -> response
+      {st, error} ->
+        if error == "undefined error" do
+          "code: #{st}, response: DOI connection error"
+        else
+          "code: #{st}, response: #{error}"
+        end
+      {:error, :econnrefused} -> "connection error: econnrefused"
+      {:econnrefused, err} -> "connection error: #{inspect(err)}"
+      _ -> "general error calling DOI API with payload: #{payload}"
+    end
+  rescue
+    e -> "cellc_request/2 exception: #{inspect e}" |> color_info(:red)
+  end
+
+  def call_cell_c(endpoint, map) do
+    msisdn = Map.get(map, "msisdn", "")
+    "call_cell_c/2 :: #{msisdn}" |> color_info(:yellow)
+    # The DOI service (double opt in) is a legal requirement.
+    # It allows the subscriber to confirm that they have indeed made the decision to subscriber.
+    # When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
+    # If the MSISDN is valid, Cell C returns a message that the subscriber is pending.
+    # Otherwise may reject the request because the subscriber is either not a Cell C subscriber or other reasons.
+
     unless endpoint in ["add_sub", "charge_sub", "cancel_sub", "notify_sub"] do
       raise ApiError, message: "invalid endpoint, #{endpoint} not support", status: 501
     end
 
-    response =
-      case request(base_url, method, headers, payload, 30) do
-        {200, response} -> response
-        {st, error} ->
-          if error == "undefined error" do
-            "code: #{st}, response: DOI connection error"
-          else
-            "code: #{st}, response: #{error}"
-          end
-        {:error, :econnrefused} -> "connection error: econnrefused"
-        {:econnrefused, err} -> "connection error: #{inspect(err)}"
-        _ -> "general error calling DOI API with payload: #{payload}"
-      end
+    response = cellc_request(endpoint, msisdn)
 
-    if is_nil(response), do: raise ApiError, message: "invalid DOI response", status: 501
+    if is_nil(response) do
+      raise ApiError, message: "invalid DOI response", status: 501
+    end
 
     if is_binary(response) do
-      message = "#{endpoint} request failed, #{inspect(response)}"
-      message |> color_info(:red)
-      %{
-        "code" => 500,
-        "data" => nil,
-        "response" => nil,
-        "payload" => params,
-        "status" => "pending",
-        "message" => "#{message}",
-        "error" => %{error: response}
-      }
+      message = "#{endpoint} request failed, #{response}"
+      return_cellc_error(map, "#{response}", "#{message}")
     else
       message = "#{endpoint} processed successfully, #{inspect(response)}"
+      status = if endpoint == "add_sub", do: "pending", else: "active"
       "#{message}" |> color_info(:green)
       msg = stringify_message(endpoint)
       service_id = response["service_id"]
-      returned_data = %{
-        status: "active",
-        service_id: service_id
-      }
+      status = "active"
+      returned_data = %{ status: status, service_id: service_id }
       response_message = if endpoint == "cancel_sub" do
                             "cancelled successfully"
                           else
@@ -491,7 +488,7 @@ defmodule TenbewGw.Endpoint do
       %{
         "code" => 200,
         "error" => nil,
-        "status" => "active",
+        "status" => status,
         "data" => returned_data,
         "message" => "#{message}",
         "response" => %{success: response_message}
@@ -499,27 +496,28 @@ defmodule TenbewGw.Endpoint do
     end
   rescue
     e in ApiError ->
-      "call_cell_c/2 :: ApiError Exception : #{inspect e.message}" |> color_info(:red)
-      %{
-        "code" => 500,
-        "data" => nil,
-        "response" => nil,
-        "payload" => map,
-        "status" => "pending",
-        "message" => "ApiError",
-        "error" => %{error: "#{inspect e.message}"}
-      }
+      return_cellc_error(map, e.message, "ApiError")
+    e in MatchError ->
+      return_cellc_error(map, e.message, "MatchError")
+    e in HackneyConnectionError ->
+      return_cellc_error(map, e.message, "HackneyConnectionError")
     e ->
-      "call_cell_c/2 :: exception : #{inspect e}" |> color_info(:red)
-      %{
-        "code" => 500,
-        "data" => nil,
-        "response" => nil,
-        "payload" => map,
-        "status" => "pending",
-        "message" => "Exception Raised",
-        "error" => %{error: "#{inspect e.message}"}
-      }
+      return_cellc_error(map, e.message, "General Exception Raised")
+  end
+
+  defp return_cellc_error(map, error, type) do
+    func = "call_cell_c/2 ::"
+    "#{func} payload : #{inspect map}" |> color_info(:red)
+    "#{func} #{type} : #{inspect error}" |> color_info(:red)
+    %{
+      "code" => 500,
+      "data" => nil,
+      "response" => nil,
+      "payload" =>  map,
+      "status" => "pending",
+      "message" => "#{type}",
+      "error" => %{error: error}
+    }
   end
 
   defp stringify_message(endpoint) do
@@ -553,7 +551,6 @@ defmodule TenbewGw.Endpoint do
       end
     end
   end
-
 
   # Callback URL
 
@@ -646,7 +643,6 @@ defmodule TenbewGw.Endpoint do
     |> put_resp_content_type("text/plain")
     |> send_resp(400, "failed to process callback test")
   end
-
 
   # Database Methods
 
@@ -1195,53 +1191,63 @@ defmodule TenbewGw.Endpoint do
     end
   end
 
-  # TODO Use this instead
+  # if required, add logic for creating subscriptions on Rails App
 
-  # defp cellc_request(endpoint, map) do
+  # def add_doi_sub(map) do
+  #   headers = [{"Content-Type", "application/json"}]
+  #   endpoint = doi_api_url() <> "/subscriptions"
+  #   msisdn = Map.get(map, "msisdn", "")
+  #   params = %{
+  #     "subscription" => %{
+  #       "msisdn" => msisdn,
+  #       "state" => "active",
+  #       "service" => "gateway",
+  #       "reference" => "testing api",
+  #       "message" => "gateway subscription"
+  #     }
+  #   } |> Poison.encode!()
+  #
+  #   case request(endpoint, :post, headers, params, 30) do
+  #     {200, body} -> body
+  #     {:error, :econnrefused} -> "connection error"
+  #     {:econnrefused, error} -> "connection error: #{error}"
+  #     _ -> "general error"
+  #   end
+  # rescue
+  #   e -> "add_doi_sub/1 :: exception : #{inspect e}" |> color_info(:red)
+  # end
+
+  # Backups
+
+  # def call_cell_c(endpoint, map) do
+  #   "call_cell_c/2" |> color_info(:yellow)
   #   method = :post
   #   msisdn = Map.get(map, "msisdn", "")
   #   params = %{ "msisdn" => msisdn }
   #   payload = Poison.encode!(params)
   #   base_url = doi_api_url() <> "/" <> endpoint
   #   headers = [{"Content-Type", "application/json"}]
-  #
-  #   case request(base_url, method, headers, payload, 30) do
-  #     {200, response} -> response
-  #     {st, error} ->
-  #       if error == "undefined error" do
-  #         "code: #{st}, response: DOI connection error"
-  #       else
-  #         "code: #{st}, response: #{error}"
-  #       end
-  #     {:error, :econnrefused} -> "connection error: econnrefused"
-  #     {:econnrefused, err} -> "connection error: #{inspect(err)}"
-  #     _ -> "general error calling DOI API with payload: #{payload}"
-  #   end
-  # rescue
-  #   e -> "cellc_request/2 exception: #{inspect e}" |> color_info(:red)
-  # end
-  #
-  # def call_cell_c(endpoint, map) do
-  #   "call_cell_c/2" |> color_info(:yellow)
-  #   # The DOI service (double opt in) is a legal requirement.
-  #   # It allows the subscriber to confirm that they have indeed made the decision to subscriber.
-  #   # When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
-  #   # If the MSISDN is valid, Cell C returns a message that the subscriber is pending.
-  #   # Otherwise may reject the request because the subscriber is either not a Cell C subscriber or other reasons.
-  #
   #   unless endpoint in ["add_sub", "charge_sub", "cancel_sub", "notify_sub"] do
   #     raise ApiError, message: "invalid endpoint, #{endpoint} not support", status: 501
   #   end
+  #   response =
+  #     case request(base_url, method, headers, payload, 30) do
+  #       {200, response} -> response
+  #       {st, error} ->
+  #         if error == "undefined error" do
+  #           "code: #{st}, response: DOI connection error"
+  #         else
+  #           "code: #{st}, response: #{error}"
+  #         end
+  #       {:error, :econnrefused} -> "connection error: econnrefused"
+  #       {:econnrefused, err} -> "connection error: #{inspect(err)}"
+  #       _ -> "general error calling DOI API with payload: #{payload}"
+  #     end
   #
-  #   response = cellc_request(endpoint, map)
-  #
-  #   if is_nil(response) do
-  #     raise ApiError, message: "invalid DOI response", status: 501
-  #   end
+  #   if is_nil(response), do: raise ApiError, message: "invalid DOI response", status: 501
   #
   #   if is_binary(response) do
   #     message = "#{endpoint} request failed, #{inspect(response)}"
-  #     # return_cellc_error(params, "#{response}", "#{message}")
   #     message |> color_info(:red)
   #     %{
   #       "code" => 500,
@@ -1277,57 +1283,27 @@ defmodule TenbewGw.Endpoint do
   #   end
   # rescue
   #   e in ApiError ->
-  #     return_cellc_error(map, e.message, "ApiError")
-  #
-  #   e in MatchError ->
-  #     return_cellc_error(map, e.message, "MatchError")
-  #
-  #   e in HackneyConnectionError ->
-  #     return_cellc_error(map, e.message, "HackneyConnectionError")
-  #
-  #   e ->
-  #     return_cellc_error(map, e.message, "General Exception Raised")
-  # end
-  #
-  # defp return_cellc_error(map, error, type) do
-  #   func = "call_cell_c/2 ::"
-  #   "#{func} payload : #{inspect map}" |> color_info(:red)
-  #   "#{func} #{type} : #{inspect error}" |> color_info(:red)
-  #   %{
-  #     "code" => 500,
-  #     "data" => nil,
-  #     "response" => nil,
-  #     "payload" =>  map,
-  #     "status" => "pending",
-  #     "message" => "#{type}",
-  #     "error" => %{error: error}
-  #   }
-  # end
-
-  # TODO - add subscriptions on Rails App
-
-  # def add_doi_sub(map) do
-  #   headers = [{"Content-Type", "application/json"}]
-  #   endpoint = doi_api_url() <> "/subscriptions"
-  #   msisdn = Map.get(map, "msisdn", "")
-  #   params = %{
-  #     "subscription" => %{
-  #       "msisdn" => msisdn,
-  #       "state" => "active",
-  #       "service" => "gateway",
-  #       "reference" => "testing api",
-  #       "message" => "gateway subscription"
+  #     "call_cell_c/2 :: ApiError Exception : #{inspect e.message}" |> color_info(:red)
+  #     %{
+  #       "code" => 500,
+  #       "data" => nil,
+  #       "response" => nil,
+  #       "payload" => map,
+  #       "status" => "pending",
+  #       "message" => "ApiError",
+  #       "error" => %{error: "#{inspect e.message}"}
   #     }
-  #   } |> Poison.encode!()
-  #
-  #   case request(endpoint, :post, headers, params, 30) do
-  #     {200, body} -> body
-  #     {:error, :econnrefused} -> "connection error"
-  #     {:econnrefused, error} -> "connection error: #{error}"
-  #     _ -> "general error"
-  #   end
-  # rescue
-  #   e -> "add_doi_sub/1 :: exception : #{inspect e}" |> color_info(:red)
+  #   e ->
+  #     "call_cell_c/2 :: exception : #{inspect e}" |> color_info(:red)
+  #     %{
+  #       "code" => 500,
+  #       "data" => nil,
+  #       "response" => nil,
+  #       "payload" => map,
+  #       "status" => "pending",
+  #       "message" => "Exception Raised",
+  #       "error" => %{error: "#{inspect e.message}"}
+  #     }
   # end
 
 end
