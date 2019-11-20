@@ -562,40 +562,67 @@ defmodule TenbewGw.Endpoint do
     func |> color_info(:lightblue)
 
     map = req_body_map(conn)
-    "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)
+    xml_str = Map.get(map, :xml, nil)
+    asr_response = parse_asr(xml_str)
+    asr = asr_response[:addSubscriptionResult]
+    "#{func} :: ASR Result: #{inspect(asr)}" |> color_info(:yellow)
 
-    # subscription = update_status(msisdn, status)
-    msisdn = Map.get(map, "msisdn", nil)
-    msisdn = msisdn || "27841234567"
-    serviceID = "CC123456"
-    ccTid = "888123"
+    cc_tid = asr[:ccTID]
+    msisdn = asr[:msisdn]
+    status = asr[:status]
+    sms_sent = asr[:smsSent]
+    sms_reply = asr[:smsReply]
+    service_id = asr[:serviceID]
 
-    expected_response = """
+    unless Subscription.exists?(msisdn) do
+      raise ValidationError, message: "invalid msisdn, MSISDN not subscribed", status: 503
+    end
+
+    # update subscription
+    if status == "ACTIVE" do
+      sub_data = %{
+        status: "active",
+        service_id: service_id
+      }
+      update_subscription_details(msisdn, sub_data)
+    end
+
+    # send confirmation sms
+    if sms_reply == "Yes" do
+      "#{func} :: Replied with Yes, SMS content: #{inspect(sms_sent)}" |> color_info(:yellow)
+    end
+
+    response_xml = """
     <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
       <soap:Body>
         <ns2:getServicesResponse xmlns:ns2="http://wasp.doi.soap.protocol.WASP.co.za">
           <return>
-            <serviceID>#{serviceID}</serviceID>
+            <serviceID>#{service_id}</serviceID>
             <msisdn>#{msisdn}</msisdn>
             <Result>0</Result>
-            <ccTid>#{ccTid}</ccTid>
+            <ccTid>#{cc_tid}</ccTid>
           </return>
         </ns2:getServicesResponse>
       </soap:Body>
     </soap:Envelope>
     """
 
-    "#{func} :: expected_response: #{inspect(expected_response)}" |> color_info(:yellow)
+    "#{func} :: ASR Response: #{inspect(response_xml)}" |> color_info(:yellow)
 
     conn
     |> put_resp_content_type("text/xml")
-    |> send_resp(200, expected_response)
-
-  rescue e ->
-    "cellc_cb1/2 exception : #{inspect e}" |> color_info(:red)
-    conn
-    |> put_resp_content_type("text/plain")
-    |> send_resp(400, "failed to process callback request")
+    |> send_resp(200, response_xml)
+  rescue
+    e in ValidationError ->
+      "cellc_cb1/2 exception : #{inspect e}" |> color_info(:red)
+      conn
+      |> put_resp_content_type("text/plain")
+      |> send_resp(400, "error processing callback request: #{e.message}")
+    e ->
+      "cellc_cb1/2 exception : #{inspect e}" |> color_info(:red)
+      conn
+      |> put_resp_content_type("text/plain")
+      |> send_resp(400, "failed to process callback request")
   end
 
   def cellc_cb_test(conn, opts) do
@@ -607,11 +634,6 @@ defmodule TenbewGw.Endpoint do
     "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)
 
     xml_str = Map.get(map, :xml, nil)
-    "#{func} :: xml_str: #{inspect(xml_str)}" |> color_info(:yellow)
-
-    # asr = parse_asr(xml_str)
-    # "#{func} :: asr: #{inspect(asr)}" |> color_info(:yellow)
-    # %{addSubscriptionResult: %{ccTID: "863282451", contentProvider: "QQ", msisdn: "27621302071", serviceID: "5114049456", smsReply: "Yes", smsSent: "Confirm your request for QQ Gaming @R5.00 per day. Reply \"Yes\" to confirm/\"No\" to cancel. Free SMS", status: "ACTIVE", subscriptionTime: "", waspReference: "00"}}
 
     asr_xml_response = process_asr(xml_str)
 
