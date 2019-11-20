@@ -13,6 +13,45 @@ defmodule ApiError do
   defexception [:message]
 end
 
+
+defmodule Plug.Parsers.XML do
+  @behaviour Plug.Parsers
+  import Plug.Conn
+  import Util.Log
+
+  def parse(conn, _, "xml", _headers, opts) do
+    decoder = Keyword.get(opts, :xml_decoder) || raise ArgumentError, "XML parser expects a :xml_decoder option"
+
+    # "Plug.Parsers.XML.decode.parse/read_body: #{inspect(read_body(conn, opts))}" |> color_info(:yellow)
+
+    conn
+    |> read_body(opts)
+    |> decode(decoder)
+  end
+
+  def parse(conn, _type, _subtype, _headers, _opts) do
+    {:next, conn}
+  end
+
+  defp decode({:ok, body, conn}, decoder) do
+    # {:ok, body, conn}
+    # "Plug.Parsers.XML.decode :: body: #{inspect(body)}" |> color_info(:yellow)
+    #
+    # decoded_str = decoder.string(String.to_charlist(body))
+    # "Plug.Parsers.XML.decode :: decoded_str: #{inspect(decoded_str)}" |> color_info(:yellow)
+    #
+    case decoder.string(String.to_charlist(body)) do
+      {parsed, []} ->
+        # {:ok, %{xml: parsed}, conn}
+        {:ok, %{xml: body}, conn}
+      error ->
+        raise "Malformed XML #{error}"
+    end
+  rescue
+    e -> raise Plug.Parsers.ParseError, exception: e
+  end
+end
+
 defmodule TenbewGw.Endpoint do
   use Plug.Router
   use Plug.Debugger
@@ -21,6 +60,7 @@ defmodule TenbewGw.Endpoint do
   import Plug.Conn
   import Util.Log
   import Util.WebRequest
+  import Util.XmlParser
   import ShortMaps
 
   alias TenbewGw.Repo
@@ -29,16 +69,24 @@ defmodule TenbewGw.Endpoint do
   alias TenbewGw.Model.{Payment, Subscription}
 
   require Logger
+  # require XML
 
   plug(:match)
   plug(Plug.Logger, log: :info)
   plug(Plug.RequestId)
+  # plug(Plug.Parsers,
+  #   parsers: [:urlencoded, :json],
+  #   pass: ["application/json", "application/octet-stream", "text/xml"],
+  #   json_decoder: Poison # Jason
+  # )
   plug(Plug.Parsers,
-    parsers: [:urlencoded, :json],
-    pass: ["application/json", "application/octet-stream", "text/xml"],
-    json_decoder: Poison # Jason
+    parsers: [:urlencoded, :multipart, :json, :xml],
+    pass: ["*/*"],
+    json_decoder: Poison,
+    xml_decoder: :xmerl_scan
   )
   plug(:dispatch)
+
 
   @content_type "application/json"
 
@@ -128,6 +176,8 @@ defmodule TenbewGw.Endpoint do
             "/update_sub_status" -> {__MODULE__, :update_sub_status, ["general"]}
 
             "/cellc_cb1" -> {__MODULE__, :cellc_cb1, ["general"]}
+            "/cellc_cb_test" -> {__MODULE__, :cellc_cb_test, ["general"]}
+
             _ -> nil
           end
 
@@ -174,6 +224,17 @@ defmodule TenbewGw.Endpoint do
   def req_query_params(conn) do
     cn = Plug.Conn.fetch_query_params(conn)
     cn.params
+  end
+
+
+  def read_xml_body(conn, opts) do
+    case Plug.Conn.read_body(conn, opts) do
+      {:ok, body, _} ->
+        "read_body/2 :: body: #{inspect(body)}" |> color_info(:yellow)
+        body
+        _ ->
+          %{}
+    end
   end
 
   defp redirect_body do
@@ -561,6 +622,36 @@ defmodule TenbewGw.Endpoint do
     conn
     |> put_resp_content_type("text/plain")
     |> send_resp(400, "failed to process callback request")
+  end
+
+  def cellc_cb_test(conn, opts) do
+    func = "cellc_cb_test/2"
+    func |> color_info(:lightblue)
+    "#{func} :: conn: #{inspect(conn)}" |> color_info(:yellow)
+
+    # map = read_xml_body(conn, opts)
+    # "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)
+
+    map = req_body_map(conn)
+    "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)
+
+    xml_str = Map.get(map, :xml, nil)
+    "#{func} :: xml_str: #{inspect(xml_str)}" |> color_info(:yellow)
+
+    # asr = parse_asr(xml_str)
+    # "#{func} :: asr: #{inspect(asr)}" |> color_info(:yellow)
+    # %{addSubscriptionResult: %{ccTID: "863282451", contentProvider: "QQ", msisdn: "27621302071", serviceID: "5114049456", smsReply: "Yes", smsSent: "Confirm your request for QQ Gaming @R5.00 per day. Reply \"Yes\" to confirm/\"No\" to cancel. Free SMS", status: "ACTIVE", subscriptionTime: "", waspReference: "00"}}
+
+    asr_xml_response = process_asr(xml_str)
+
+    conn
+    |> put_resp_content_type("text/xml")
+    |> send_resp(200, asr_xml_response)
+  rescue e ->
+    "cellc_cb_test/2 exception : #{inspect e}" |> color_info(:red)
+    conn
+    |> put_resp_content_type("text/plain")
+    |> send_resp(400, "failed to process callback test")
   end
 
 

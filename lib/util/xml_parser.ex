@@ -1,5 +1,8 @@
-defmodule ASR do
-  @example """
+defmodule Util.XmlParser do
+  import SweetXml
+  import Util.Log
+  import TenbewGw
+  @example_xml """
   <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
     <SOAP-ENV:Header xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
       <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" soap:mustUnderstand="1">
@@ -25,9 +28,9 @@ defmodule ASR do
     </soap:Body>
   </soap:Envelope>
   """
-  import SweetXml
-  def parse_example do
-    @example
+
+  def parse_asr(xml) do
+    xml
     |> String.split("<soap:Body>")
     |> List.last
     |> String.split("</soap:Body>")
@@ -35,7 +38,74 @@ defmodule ASR do
     |> join_splits()
     |> parse
     |> fetch_result_map()
-    |> IO.inspect
+  end
+
+  def process_asr(xml) do
+    xml
+    |> String.split("<soap:Body>")
+    |> List.last
+    |> String.split("</soap:Body>")
+    |> List.first
+    |> join_splits()
+    |> parse
+    |> fetch_result_map()
+    |> return_asr_xml
+  end
+
+  def return_asr_xml(response) do
+    result = response[:addSubscriptionResult]
+    "addSubscriptionResult: #{inspect(result)}" |> color_info(:yellow)
+    msisdn = result[:msisdn]
+    serviceID = result[:serviceID]
+    ccTid = result[:ccTID]
+    """
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+      <soap:Body>
+        <ns2:getServicesResponse xmlns:ns2="http://wasp.doi.soap.protocol.WASP.co.za">
+          <return>
+            <serviceID>#{serviceID}</serviceID>
+            <msisdn>#{msisdn}</msisdn>
+            <Result>0</Result>
+            <ccTid>#{ccTid}</ccTid>
+          </return>
+        </ns2:getServicesResponse>
+      </soap:Body>
+    </soap:Envelope>
+    """
+  end
+
+  def parse_xml do
+    @example_xml
+    |> String.split("<soap:Body>")
+    |> List.last
+    |> String.split("</soap:Body>")
+    |> List.first
+    |> join_splits()
+    |> parse
+    |> fetch_result_map()
+  end
+
+  def return_xml_example do
+    response = parse_xml
+    result = response[:addSubscriptionResult]
+    "addSubscriptionResult: #{inspect(result)}" |> color_info(:yellow)
+    msisdn = result[:msisdn]
+    serviceID = result[:serviceID]
+    ccTid = result[:ccTID]
+    """
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+      <soap:Body>
+        <ns2:getServicesResponse xmlns:ns2="http://wasp.doi.soap.protocol.WASP.co.za">
+          <return>
+            <serviceID>#{serviceID}</serviceID>
+            <msisdn>#{msisdn}</msisdn>
+            <Result>0</Result>
+            <ccTid>#{ccTid}</ccTid>
+          </return>
+        </ns2:getServicesResponse>
+      </soap:Body>
+    </soap:Envelope>
+    """
   end
 
   defp join_splits(str) do
@@ -58,48 +128,5 @@ defmodule ASR do
       ]
     )
   end
-
-  def test_example do
-    response = parse_example
-    result = response[:addSubscriptionResult]
-    msisdn = result[:msisdn]
-    serviceID = result[:serviceID]
-    ccTid = result[:ccTID]
-
-    expected_response = """
-    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-      <soap:Body>
-        <ns2:getServicesResponse xmlns:ns2="http://wasp.doi.soap.protocol.WASP.co.za">
-          <return>
-            <serviceID>#{serviceID}</serviceID>
-            <msisdn>#{msisdn}</msisdn>
-            <Result>0</Result>
-            <ccTid>#{ccTid}</ccTid>
-          </return>
-        </ns2:getServicesResponse>
-      </soap:Body>
-    </soap:Envelope>
-    """
-
-    IO.inspect expected_response
-  end
-
-  # mix run -e ASR.parse_example
-
-  # %{
-  #   addSubscriptionResult: %{
-  #     ccTID: "863282451",
-  #     contentProvider: "QQ",
-  #     msisdn: "27621302071",
-  #     serviceID: "5114049456",
-  #     smsReply: "Yes",
-  #     smsSent: "Confirm your request for QQ Gaming @R5.00 per day. Reply \"Yes\" to confirm/\"No\" to cancel. Free SMS",
-  #     status: "ACTIVE",
-  #     subscriptionTime: "",
-  #     waspReference: "00"
-  #   }
-  # }
-
-
 
 end
