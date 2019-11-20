@@ -13,7 +13,6 @@ defmodule ApiError do
   defexception [:message]
 end
 
-
 defmodule Plug.Parsers.XML do
   @behaviour Plug.Parsers
   import Plug.Conn
@@ -21,8 +20,6 @@ defmodule Plug.Parsers.XML do
 
   def parse(conn, _, "xml", _headers, opts) do
     decoder = Keyword.get(opts, :xml_decoder) || raise ArgumentError, "XML parser expects a :xml_decoder option"
-
-    # "Plug.Parsers.XML.decode.parse/read_body: #{inspect(read_body(conn, opts))}" |> color_info(:yellow)
 
     conn
     |> read_body(opts)
@@ -34,12 +31,6 @@ defmodule Plug.Parsers.XML do
   end
 
   defp decode({:ok, body, conn}, decoder) do
-    # {:ok, body, conn}
-    # "Plug.Parsers.XML.decode :: body: #{inspect(body)}" |> color_info(:yellow)
-    #
-    # decoded_str = decoder.string(String.to_charlist(body))
-    # "Plug.Parsers.XML.decode :: decoded_str: #{inspect(decoded_str)}" |> color_info(:yellow)
-    #
     case decoder.string(String.to_charlist(body)) do
       {parsed, []} ->
         # {:ok, %{xml: parsed}, conn}
@@ -69,19 +60,13 @@ defmodule TenbewGw.Endpoint do
   alias TenbewGw.Model.{Payment, Subscription}
 
   require Logger
-  # require XML
 
   plug(:match)
   plug(Plug.Logger, log: :info)
   plug(Plug.RequestId)
-  # plug(Plug.Parsers,
-  #   parsers: [:urlencoded, :json],
-  #   pass: ["application/json", "application/octet-stream", "text/xml"],
-  #   json_decoder: Poison # Jason
-  # )
   plug(Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json, :xml],
-    pass: ["*/*"],
+    pass: ["*/*"], # ["application/json", "application/octet-stream", "text/xml"],
     json_decoder: Poison,
     xml_decoder: :xmerl_scan
   )
@@ -224,17 +209,6 @@ defmodule TenbewGw.Endpoint do
   def req_query_params(conn) do
     cn = Plug.Conn.fetch_query_params(conn)
     cn.params
-  end
-
-
-  def read_xml_body(conn, opts) do
-    case Plug.Conn.read_body(conn, opts) do
-      {:ok, body, _} ->
-        "read_body/2 :: body: #{inspect(body)}" |> color_info(:yellow)
-        body
-        _ ->
-          %{}
-    end
   end
 
   defp redirect_body do
@@ -628,9 +602,6 @@ defmodule TenbewGw.Endpoint do
     func = "cellc_cb_test/2"
     func |> color_info(:lightblue)
     "#{func} :: conn: #{inspect(conn)}" |> color_info(:yellow)
-
-    # map = read_xml_body(conn, opts)
-    # "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)
 
     map = req_body_map(conn)
     "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)

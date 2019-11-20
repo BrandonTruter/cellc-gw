@@ -36,8 +36,6 @@ defmodule TenbewGw.MixProject do
       {:short_maps, github: "whatyouhide/short_maps"},
       {:logger_file_backend, "~> 0.0.10"},
       {:sweet_xml, "~> 0.6"}
-      # {:exoml, "~> 0.0.2"}
-      # {:xml_builder, "~> 2.1.1"}
     ]
   end
 end
