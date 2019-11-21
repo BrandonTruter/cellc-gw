@@ -150,6 +150,8 @@ defmodule TenbewGw.Endpoint do
             "/CancelSub" -> {__MODULE__, :cancel_sub, ["general"]}
             "/get_payment" -> {__MODULE__, :get_payment, ["general"]}
             "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
+
+            "/sms/SendSMS" -> {__MODULE__, :send_sms, ["general"]}
             _ -> nil
           end
 
@@ -159,10 +161,8 @@ defmodule TenbewGw.Endpoint do
             "/add_payment" -> {__MODULE__, :add_payment, ["general"]}
             "/callback_url" -> {__MODULE__, :update_sub_status, ["general"]}
             "/update_sub_status" -> {__MODULE__, :update_sub_status, ["general"]}
-
-            "/cellc_cb1" -> {__MODULE__, :cellc_cb1, ["general"]}
             "/cellc_cb_test" -> {__MODULE__, :cellc_cb_test, ["general"]}
-
+            "/cellc_cb1" -> {__MODULE__, :cellc_cb1, ["general"]}
             _ -> nil
           end
 
@@ -423,6 +423,33 @@ defmodule TenbewGw.Endpoint do
       status = 500
       message = "error occured"
       r_json(~m(status message)s)
+  end
+
+
+  def send_sms(conn, opts) do
+    map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    message = Map.get(map, "message", "")
+    message_id = Map.get(map, "MessageID", "")
+    subscription = Subscription.get_by_msisdn(msisdn)
+    "GET /SendSMS :: msisdn: #{msisdn}, message: #{message}" |> color_info(:lightblue)
+    attrs = %{message: message, message_id: message_id, subscription_id: subscription.id}
+
+    case Message.create_message(attrs) do
+      {:ok, message} ->
+        success = "message created #{message.id}"
+        "Message Success: #{inspect(message)}" |> color_info(:green)
+        r_json(~m(success)s)
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        error = changeset_errors(changeset)
+         "Message Error: #{inspect(error)}" |> color_info(:red)
+        r_json(~m(error)s)
+    end
+  rescue e ->
+    error = "#{inspect(e)}"
+    "GET /SendSMS :: Exception: #{error}" |> color_info(:red)
+    r_json(~m(error)s)
   end
 
   # Cell C DOI Methods
