@@ -2,7 +2,7 @@ defmodule TenbewGw.Model.Subscription do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query , warn: false
-  alias TenbewGw.Model.{Subscription, Payment}
+  alias TenbewGw.Model.{Subscription, Payment, Message}
   alias TenbewGw.Repo
 
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -13,6 +13,7 @@ defmodule TenbewGw.Model.Subscription do
     field(:validated, :boolean)
 
     has_many(:payments, TenbewGw.Model.Payment)
+    has_many(:messages, TenbewGw.Model.Message)
 
     timestamps()
   end
@@ -76,7 +77,9 @@ defmodule TenbewGw.Model.Subscription do
   end
 
   def get_by_msisdn!(msisdn) do
-    Subscription |> Repo.get_by!(msisdn: msisdn) |> Repo.preload([:payments])
+    Subscription
+      |> Repo.get_by!(msisdn: msisdn)
+      |> Repo.preload([:payments, :messages])
   rescue e ->
     nil
   end
@@ -84,7 +87,7 @@ defmodule TenbewGw.Model.Subscription do
     from(s in Subscription, where: s.msisdn == ^msisdn)
       |> Repo.all()
       |> List.first()
-      |> Repo.preload([:payments])
+      |> Repo.preload([:payments, :messages])
   rescue e ->
     nil
   end
@@ -153,6 +156,28 @@ defmodule TenbewGw.Model.Subscription do
       cancelled: 200, # The subscriber has cancelled the subscription. For purposes of development, the subscriber will be assumed to be non-existent in the database.
       unknown:   900  # anything else, not supported, unavailable
     }
+  end
+
+  # Messages
+
+  def get_messages(id) do
+    query = from m in Message, where: m.subscription_id == ^id
+    Repo.all(query)
+    rescue e -> nil
+  end
+
+  def get_messages_by_msisdn(msisdn) do
+    s = Subscription |> Repo.get_by(msisdn: msisdn)
+    query = from m in Message, where: m.subscription_id == ^s.id
+    Repo.all(query)
+    rescue e -> nil
+  end
+
+  def get_last_message(id) do
+    get_messages(id)
+    |> List.last()
+  rescue e ->
+    nil
   end
 
 end

@@ -57,7 +57,7 @@ defmodule TenbewGw.Endpoint do
   alias TenbewGw.Repo
   alias TenbewGw.Router
   alias Plug.{Adapters.Cowboy2, HTML}
-  alias TenbewGw.Model.{Payment, Subscription}
+  alias TenbewGw.Model.{Subscription, Payment, Message}
 
   require Logger
 
