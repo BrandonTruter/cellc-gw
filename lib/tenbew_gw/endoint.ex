@@ -435,6 +435,9 @@ defmodule TenbewGw.Endpoint do
     "GET /SendSMS :: msisdn: #{msisdn}, message: #{message}" |> color_info(:lightblue)
     attrs = %{message: message, message_id: message_id, subscription_id: subscription.id}
 
+    process_sms_request(msisdn)
+    "after process_sms_request/1" |> color_info(:yellow)
+
     case Message.create_message(attrs) do
       {:ok, message} ->
         success = "message created #{message.id}"
@@ -450,6 +453,51 @@ defmodule TenbewGw.Endpoint do
     error = "#{inspect(e)}"
     "GET /SendSMS :: Exception: #{error}" |> color_info(:red)
     r_json(~m(error)s)
+  end
+
+  # defp process_message_creation(attrs) do
+  #   case Message.create_message(attrs) do
+  #     {:ok, message} ->
+  #       success = "message created #{message.id}"
+  #       "Message Success: #{inspect(message)}" |> color_info(:green)
+  #       r_json(~m(success)s)
+  #
+  #     {:error, %Ecto.Changeset{} = changeset} ->
+  #       error = changeset_errors(changeset)
+  #        "Message Error: #{inspect(error)}" |> color_info(:red)
+  #       r_json(~m(error)s)
+  #   end
+  # end
+
+  defp process_sms_request(msisdn) do
+    port = 13013
+    user = "foo"
+    pass = "bar"
+    system_id = ""
+    host = "156.38.208.218"
+    sms_url = "cgi-bin/sendsms"
+    base_url = "http://smsbox.host.name"
+    sms_text = text_message |> URI.encode_query
+    query_params = "username=#{user}&password=#{pass}&to=#{msisdn}&text=#{sms_text}"
+    headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
+    endpoint = "#{base_url}:#{port}/#{sms_url}?#{query_params}"
+
+    # via Kannel HTTP
+
+    case request(endpoint, :get, headers, "", 30) do
+      {200, response} -> "SUCCESS: #{inspect(response)}" |> color_info(:green)
+      {st, error} -> "ERROR: code: #{st}, #{error}" |> color_info(:red)
+      _ -> "EXCEPTION: failed to process SMS" |> color_info(:red)
+    end
+
+    # via SMPPEX.Session
+
+    {:ok, esme} = Util.SmsSession.start_link(host, port)
+    SMPPEX.Session.send_pdu(esme, SMPPEX.Pdu.Factory.bind_transmitter(system_id, pass))
+  end
+
+  defp text_message do
+    "Welcome to QQ-Tenbew Games. Experience our world. Thank you for subscribing. Service costs 5 Rands a day charged daily"
   end
 
   # Cell C DOI Methods
