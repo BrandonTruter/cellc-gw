@@ -152,6 +152,7 @@ defmodule TenbewGw.Endpoint do
             "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
 
             "/sms/SendSMS" -> {__MODULE__, :send_sms, ["general"]}
+            "/SendSMS.php" -> {__MODULE__, :send_sms_2, ["general"]}
             _ -> nil
           end
 
@@ -434,9 +435,8 @@ defmodule TenbewGw.Endpoint do
     subscription = Subscription.get_by_msisdn(msisdn)
     "GET /SendSMS :: msisdn: #{msisdn}, message: #{message}" |> color_info(:lightblue)
     attrs = %{message: message, message_id: message_id, subscription_id: subscription.id}
-
-    process_sms_request(msisdn)
-    "after process_sms_request/1" |> color_info(:yellow)
+    # process_sms_request(msisdn)
+    # "after process_sms_request/1" |> color_info(:yellow)
 
     case Message.create_message(attrs) do
       {:ok, message} ->
@@ -455,21 +455,44 @@ defmodule TenbewGw.Endpoint do
     r_json(~m(error)s)
   end
 
-  # defp process_message_creation(attrs) do
-  #   case Message.create_message(attrs) do
-  #     {:ok, message} ->
-  #       success = "message created #{message.id}"
-  #       "Message Success: #{inspect(message)}" |> color_info(:green)
-  #       r_json(~m(success)s)
-  #
-  #     {:error, %Ecto.Changeset{} = changeset} ->
-  #       error = changeset_errors(changeset)
-  #        "Message Error: #{inspect(error)}" |> color_info(:red)
-  #       r_json(~m(error)s)
-  #   end
-  # end
+  def send_sms_2(conn, opts) do
+    map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    message = Map.get(map, "message", "")
+    message_id = Map.get(map, "MessageID", "")
+    subscription = Subscription.get_by_msisdn(msisdn)
+    "GET /SendSMS :: msisdn: #{msisdn}, message: #{message}" |> color_info(:lightblue)
+    attrs = %{message: message, message_id: message_id, subscription_id: subscription.id}
+
+    process_message_creation(attrs)
+
+    process_sms_request(msisdn)
+
+    response = "SMS done"
+
+    r_json(~m(response)s)
+  rescue e ->
+    error = "#{inspect(e)}"
+    "GET /SendSMS :: Exception: #{error}" |> color_info(:red)
+    r_json(~m(error)s)
+  end
+
+  defp process_message_creation(attrs) do
+    func = "process_message_creation/1 ::"
+    "#{func} #{inspect(attrs)} " |> color_info(:yellow)
+
+    case Message.create_message(attrs) do
+      {:ok, message} ->
+        "#{func} Success: #{inspect(message)}" |> color_info(:green)
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+         "#{func} Error: #{inspect(changeset_errors(changeset))}" |> color_info(:red)
+    end
+  end
 
   defp process_sms_request(msisdn) do
+    func = "process_sms_request/1"
+    "#{func} :: msisdn: #{msisdn}" |> color_info(:yellow)
     port = 13013
     user = "foo"
     pass = "bar"
@@ -483,14 +506,16 @@ defmodule TenbewGw.Endpoint do
     endpoint = "#{base_url}:#{port}/#{sms_url}?#{query_params}"
 
     # via Kannel HTTP
+    "#{func} :: Kannel HTTP ..." |> color_info(:yellow)
 
     case request(endpoint, :get, headers, "", 30) do
-      {200, response} -> "SUCCESS: #{inspect(response)}" |> color_info(:green)
-      {st, error} -> "ERROR: code: #{st}, #{error}" |> color_info(:red)
-      _ -> "EXCEPTION: failed to process SMS" |> color_info(:red)
+      {200, response} -> "#{func} :: SUCCESS: #{inspect(response)}" |> color_info(:green)
+      {st, error} -> "#{func} :: ERROR: code: #{st}, #{error}" |> color_info(:red)
+      _ -> "#{func} :: EXCEPTION: failed to process SMS" |> color_info(:red)
     end
 
     # via SMPPEX.Session
+    "#{func} :: SMPPEX.Session ..." |> color_info(:yellow)
 
     {:ok, esme} = Util.SmsSession.start_link(host, port)
     SMPPEX.Session.send_pdu(esme, SMPPEX.Pdu.Factory.bind_transmitter(system_id, pass))
