@@ -501,7 +501,7 @@ defmodule TenbewGw.Endpoint do
       return_cellc_error(map, "#{response}", "#{message}")
     else
       message = "#{endpoint} processed successfully, #{inspect(response)}"
-      status = if endpoint == "add_sub", do: "pending", else: "active"
+      # status = if endpoint == "add_sub", do: "pending", else: "active"
       "#{message}" |> color_info(:green)
       msg = stringify_message(endpoint)
       service_id = response["service_id"]
@@ -611,9 +611,29 @@ defmodule TenbewGw.Endpoint do
       update_subscription_details(msisdn, sub_data)
     end
 
-    # send confirmation sms
     if sms_reply == "Yes" do
       "#{func} :: Replied with Yes, SMS content: #{inspect(sms_sent)}" |> color_info(:yellow)
+      subscription = Subscription.get_by_msisdn(msisdn)
+
+      unless is_nil(subscription) do
+        # TODO Ensure the same SMS isnt sent twice by multiple ASR requests
+        message_exists = Message.exists?("000", subscription.id)
+        message_attrs = %{
+          message: sms_sent,
+          message_id: "000",
+          subscription_id: subscription.id
+        }
+
+        unless message_exists do
+          case Message.create_message(message_attrs) do
+            {:ok, message} ->
+              "#{func} :: Message Created Successfully: #{inspect(message)}" |> color_info(:green)
+
+            {:error, %Ecto.Changeset{} = changeset} ->
+              "#{func} :: Error Creating Message: #{inspect(changeset_errors(changeset))}" |> color_info(:red)
+          end
+        end
+      end
     end
 
     response_xml = """
@@ -630,8 +650,6 @@ defmodule TenbewGw.Endpoint do
       </soap:Body>
     </soap:Envelope>
     """
-
-    "#{func} :: ASR Response: #{inspect(response_xml)}" |> color_info(:yellow)
 
     conn
     |> put_resp_content_type("text/xml")

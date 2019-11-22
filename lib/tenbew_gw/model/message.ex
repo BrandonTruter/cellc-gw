@@ -42,6 +42,8 @@ defmodule TenbewGw.Model.Message do
     query = from m in Message, where: m.subscription_id == ^subscription_id
     Repo.all(query)
     |> List.last()
+  rescue e ->
+    nil
   end
 
   def get_messages_by_msisdn(msisdn) do
@@ -52,6 +54,8 @@ defmodule TenbewGw.Model.Message do
 
     query = from m in Message, where: m.subscription_id == ^subscription.id
     Repo.all(query)
+  rescue e ->
+    nil
   end
 
   def test_message_creation() do
@@ -66,6 +70,13 @@ defmodule TenbewGw.Model.Message do
 
   defp default_message do
     "Welcome to QQ-Tenbew Games. Experience our world. Thank you for subscribing. Service costs 5 Rands a day charged daily"
+  end
+
+  def exists?(message_id, subscription_id) do
+    query = from m in Message, where: m.message_id == ^message_id and m.subscription_id == ^subscription_id
+    msg = Repo.all(query)
+    if length(msg) <= 0, do: false, else: true
+    rescue e -> false
   end
 
 end
