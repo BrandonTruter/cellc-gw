@@ -14,7 +14,6 @@ defmodule TenbewGw.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      applications: [:smppex],
       extra_applications: [:logger],
       mod: {TenbewGw.Application, []}
     ]
@@ -36,8 +35,8 @@ defmodule TenbewGw.MixProject do
       {:hackney, github: "benoitc/hackney", override: true},
       {:short_maps, github: "whatyouhide/short_maps"},
       {:logger_file_backend, "~> 0.0.10"},
-      {:sweet_xml, "~> 0.6"},
-      {:smppex, "~> 2.0"}
+      {:sweet_xml, "~> 0.6"}
+      # {:smppex, "~> 2.0"}
     ]
   end
 end

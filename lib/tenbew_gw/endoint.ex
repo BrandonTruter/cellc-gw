@@ -515,10 +515,10 @@ defmodule TenbewGw.Endpoint do
     end
 
     # via SMPPEX.Session
-    "#{func} :: SMPPEX.Session ..." |> color_info(:yellow)
+    # "#{func} :: SMPPEX.Session ..." |> color_info(:yellow)
 
-    {:ok, esme} = Util.SmsSession.start_link(host, port)
-    SMPPEX.Session.send_pdu(esme, SMPPEX.Pdu.Factory.bind_transmitter(system_id, pass))
+    # {:ok, esme} = Util.SmsSession.start_link(host, port)
+    # SMPPEX.Session.send_pdu(esme, SMPPEX.Pdu.Factory.bind_transmitter(system_id, pass))
   end
 
   defp text_message do
