@@ -45,12 +45,12 @@ config :logger, :error,
   format: "$date UTC $time [$metadata] [$level] $message\n",
   level: :error
 
-config :tenbew_gw, TenbewGw.Repo,
-  adapter: Ecto.Adapters.MySQL,
-  database: "tenbew",
-  username: "root",
-  password: "",
-  hostname: "localhost"
+# config :tenbew_gw, TenbewGw.Repo,
+#   adapter: Ecto.Adapters.MySQL,
+#   database: "tenbew",
+#   username: "root",
+#   password: "",
+#   hostname: "localhost"
 
 config :tenbew_gw, :charges,
   code: "DOI005",
