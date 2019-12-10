@@ -254,9 +254,20 @@ defmodule TenbewGw.Endpoint do
     end
 
     # 3. Check if the MSISDN is already Subscribed
-    unless valid_msisdn_existance(msisdn) do
-      raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    # unless valid_msisdn_existance(msisdn) do
+    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    # end
+
+    # if validate_presence(msisdn, "pending") do
+    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    # end
+
+    if Subscription.exists?(msisdn) do
+      if Subscription.get_status(msisdn) == "pending" do
+        raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+      end
     end
+
 
     # 4. Call up Cell C DOI Service
     response = call_cell_c("add_sub", map)
@@ -427,6 +438,8 @@ defmodule TenbewGw.Endpoint do
   end
 
 
+  # SMS integration (might remove)
+
   def send_sms(conn, opts) do
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
@@ -525,11 +538,12 @@ defmodule TenbewGw.Endpoint do
     "Welcome to QQ-Tenbew Games. Experience our world. Thank you for subscribing. Service costs 5 Rands a day charged daily"
   end
 
+
   # Cell C DOI Methods
 
   defp cellc_request(endpoint, msisdn) do
     method = :post
-    params = %{ "msisdn" => msisdn }
+    params = %{"msisdn" => msisdn}
     payload = Poison.encode!(params)
     base_url = doi_api_url() <> "/" <> endpoint
     headers = [{"Content-Type", "application/json"}]
@@ -553,38 +567,39 @@ defmodule TenbewGw.Endpoint do
   def call_cell_c(endpoint, map) do
     msisdn = Map.get(map, "msisdn", "")
     "call_cell_c/2 :: #{msisdn}" |> color_info(:yellow)
-    # The DOI service (double opt in) is a legal requirement.
-    # It allows the subscriber to confirm that they have indeed made the decision to subscriber.
-    # When this function is called, the subscriber is sent an SMS by Cell C to confirm the request.
-    # If the MSISDN is valid, Cell C returns a message that the subscriber is pending.
-    # Otherwise may reject the request because the subscriber is either not a Cell C subscriber or other reasons.
-
     unless endpoint in ["add_sub", "charge_sub", "cancel_sub", "notify_sub"] do
       raise ApiError, message: "invalid endpoint, #{endpoint} not support", status: 501
     end
 
     response = cellc_request(endpoint, msisdn)
-
-    if is_nil(response) do
-      raise ApiError, message: "invalid DOI response", status: 501
-    end
+    if is_nil(response), do: raise ApiError, message: "invalid DOI response", status: 501
 
     if is_binary(response) do
       message = "#{endpoint} request failed, #{response}"
       return_cellc_error(map, "#{response}", "#{message}")
     else
-      message = "#{endpoint} processed successfully, #{inspect(response)}"
       # status = if endpoint == "add_sub", do: "pending", else: "active"
-      "#{message}" |> color_info(:green)
+      message = "#{endpoint} processed successfully, #{inspect(response)}"
+      message |> color_info(:green)
       msg = stringify_message(endpoint)
       service_id = response["service_id"]
-      status = "active"
-      returned_data = %{ status: status, service_id: service_id }
-      response_message = if endpoint == "cancel_sub" do
-                            "cancelled successfully"
-                          else
-                            if is_nil(service_id), do: msg , else: "#{msg}, serviceID: #{service_id}"
-                          end
+      status =
+        case endpoint do
+          "add_sub" -> "pending"
+          "charge_sub" -> "active"
+          "cancel_sub" -> "cancelled"
+          _ -> "active"
+        end
+      returned_data = %{
+        status: status, service_id: service_id
+      }
+      response_message =
+        if endpoint == "cancel_sub" do
+          "cancelled successfully"
+        else
+          if is_nil(service_id), do: msg , else: "#{msg}, serviceID: #{service_id}"
+        end
+
       %{
         "code" => 200,
         "error" => nil,

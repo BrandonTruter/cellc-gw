@@ -1,7 +1,7 @@
 use Mix.Config
 
 config :tenbew_gw, TenbewGw.Endpoint,
-  port: String.to_integer(System.get_env("PORT") || "4444")
+  port: String.to_integer(System.get_env("PORT") || "4000")
 
 config :tenbew_gw, TenbewGw.Repo,
   adapter: Ecto.Adapters.MySQL,
