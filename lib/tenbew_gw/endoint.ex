@@ -644,58 +644,85 @@ defmodule TenbewGw.Endpoint do
   end
 
   def call_cell_c(endpoint, map) do
+    func = "call_cell_c/2"
+    func |> color_info(:blue)
     msisdn = Map.get(map, "msisdn", "")
     service_id = Map.get(map, "service_id", "")
-    "call_cell_c/2 :: #{inspect(map)}" |> color_info(:yellow)
-    unless endpoint in ["add_sub", "charge_sub", "cancel_sub", "notify_sub", "charge"] do
+    # unless endpoint in ["add_sub", "charge_sub", "cancel_sub", "notify_sub", "charge"] do
+    #   raise ApiError, message: "invalid endpoint, #{endpoint} not support", status: 501
+    # end
+    if endpoint in ~w(add_sub charge_sub cancel_sub notify_sub charge) do
+      "#{func} :: endpoint: #{endpoint}" |> color_info(:yellow)
+    else
       raise ApiError, message: "invalid endpoint, #{endpoint} not support", status: 501
     end
-    # response = cellc_request(endpoint, msisdn)
 
-    payload =
-      if endpoint == "charge" do
-        %{"msisdn" => msisdn, "service_id" => service_id}
-      else
-        %{"msisdn" => msisdn}
-      end
+    payload = if empty?(service_id), do: %{"msisdn" => msisdn}, else: %{"msisdn" => msisdn, "service_id" => service_id}
+    "#{func} :: payload: #{inspect(payload)}" |> color_info(:yellow)
+
     response = cellc_request(endpoint, payload)
+    "#{func} :: response: #{inspect(response)}" |> color_info(:yellow)
 
-    if is_nil(response), do: raise ApiError, message: "invalid DOI response", status: 501
+    # if is_nil(response), do: raise ApiError, message: "invalid DOI response", status: 501
+    # if is_binary(response) do
+    #   message = "#{endpoint} request failed, #{response}"
+    #   return_cellc_error(map, "#{response}", "#{message}")
+    # else
+    #   message = "#{endpoint} processed successfully, #{inspect(response)}"
+    #   message |> color_info(:green)
+    #   status = doi_status(endpoint)
+    #   msg = stringify_message(endpoint)
+    #   service_id = response["service_id"]
+    #   returned_data = %{ status: status, service_id: service_id }
+    #   response_message =
+    #     if endpoint == "cancel_sub" do
+    #       "cancelled successfully"
+    #     else
+    #       if is_nil(service_id), do: msg, else: "#{msg}, serviceID: #{service_id}"
+    #     end
+    #   %{
+    #     "code" => 200,
+    #     "error" => nil,
+    #     "status" => status,
+    #     "data" => returned_data,
+    #     "message" => "#{message}",
+    #     "response" => %{success: response_message}
+    #   }
+    # end
 
-    if is_binary(response) do
-      message = "#{endpoint} request failed, #{response}"
-      return_cellc_error(map, "#{response}", "#{message}")
-    else
-      # status = if endpoint == "add_sub", do: "pending", else: "active"
-      message = "#{endpoint} processed successfully, #{inspect(response)}"
-      message |> color_info(:green)
-      msg = stringify_message(endpoint)
-      service_id = response["service_id"]
-      status =
-        case endpoint do
-          "add_sub" -> "pending"
-          "charge_sub" -> "active"
-          "cancel_sub" -> "cancelled"
-          _ -> "active"
-        end
-      returned_data = %{
-        status: status, service_id: service_id
-      }
-      response_message =
-        if endpoint == "cancel_sub" do
-          "cancelled successfully"
-        else
-          if is_nil(service_id), do: msg , else: "#{msg}, serviceID: #{service_id}"
-        end
+    case response do
+      resp when is_nil(resp) -> raise ApiError, message: "invalid DOI response", status: 501
 
-      %{
-        "code" => 200,
-        "error" => nil,
-        "status" => status,
-        "data" => returned_data,
-        "message" => "#{message}",
-        "response" => %{success: response_message}
-      }
+      resp when is_binary(resp) -> return_cellc_error(map, "#{response}", "#{endpoint} failed, #{response}")
+
+      _ ->
+      resp_code = if empty?(response["result"]), do: "0", else: response["result"] # remove this 0 default
+      errors = doi_error_codes(resp_code, endpoint)
+
+      if is_nil(errors) do
+        status = doi_status(endpoint)
+        msg = stringify_message(endpoint)
+        service_id = response["service_id"] || service_id
+        returned_data = %{status: status, service_id: service_id}
+        message = "#{endpoint} processed successfully"
+        "#{func} :: #{message}" |> color_info(:green)
+        response_message =
+          if endpoint == "cancel_sub" do
+            "cancelled successfully"
+          else
+            if empty?(service_id), do: msg, else: "#{msg}, serviceID: #{service_id}"
+          end
+        %{
+          "code" => 200,
+          "error" => nil,
+          "status" => status,
+          "data" => returned_data,
+          "message" => "#{message}",
+          "response" => %{success: response_message}
+        }
+      else
+        return_cellc_error(map, errors, "DOI_API_Error")
+      end
     end
   rescue
     e in ApiError ->
@@ -709,9 +736,7 @@ defmodule TenbewGw.Endpoint do
   end
 
   defp return_cellc_error(map, error, type) do
-    func = "call_cell_c/2 ::"
-    "#{func} payload : #{inspect map}" |> color_info(:red)
-    "#{func} #{type} : #{inspect error}" |> color_info(:red)
+    "call_cell_c/2 :: #{type} : #{inspect error}" |> color_info(:red)
     %{
       "code" => 500,
       "data" => nil,
@@ -721,6 +746,55 @@ defmodule TenbewGw.Endpoint do
       "message" => "#{type}",
       "error" => %{error: error}
     }
+  end
+
+  defp doi_error_codes(code, endpoint) do
+    case code do
+      "0" -> nil
+      "201" -> "Service Already Exists - Status is Active or Preactivated"
+      "202" -> "Insufficient Funds"
+      "203" -> "Subscriber Blacklisted"
+      "204" -> "Duplicate Request - Pending subscriber Opt In"
+      "206" -> "Charge Error – Permanent"
+      "208" -> "Request Error – Permanent"
+      "209" -> "Renotify success"
+      "210" -> "Renotify exceeded - maximum allowed renotifications exceeded"
+      "211" -> "Renotify Rejected Possible reasons: Subscription does not exist or is not in pending state"
+      "212" -> "Rejected by Filter – prohibited word"
+      "213" -> "Maximum allowed charges exceeded"
+      "214" -> "Incorrect charge interval"
+      "215" -> "Incorrect Charge Code"
+      "216" ->
+        case endpoint do
+          "add_sub" -> "Invalid MSISDN, lookup failed"
+          "charge" -> "Subscriber hotlined/suspended/churned"
+          "cancel_sub" -> "Subscriber hotlined/suspended/churned"
+          _ -> "unhandled DOI error mapping for endpoint: #{endpoint}"
+        end
+      "217" -> "Invalid Content Type"
+      "218" -> "Incorrect ServiceName / ContentProvider length"
+      "220" -> "Service in Clearing Period - 24 hours"
+      "221" -> "Subscription not found"
+      "223" -> "Billing Error"
+      "224" -> "No service id specified"
+      "225" -> "Rejected, Subscriber rejected the subscription, in 24h clearing period"
+      "226" -> "Cancelled, Subscription has been cancelled, in 24h clearing period"
+      "227" -> "Churned, Subscriber churned, in 24h clearing period"
+      "228" -> "Inactive Subscriber: Returned by CRM"
+      "230" -> "Invalid Subscriber: Returned by CRM"
+      "231" -> "Not allowed to be positioned"
+      "232" -> "Positioning system error"
+      _ -> "unknown code: #{code}"
+    end
+  end
+
+  defp doi_status(endpoint) do
+    case endpoint do
+      "add_sub" -> "pending"
+      "charge_sub" -> "active"
+      "cancel_sub" -> "cancelled"
+      _ -> "active"
+    end
   end
 
   defp stringify_message(endpoint) do
