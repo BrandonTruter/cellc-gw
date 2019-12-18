@@ -415,20 +415,14 @@ defmodule TenbewGw.Endpoint do
                   if subscription.services == "00", do: nil, else: subscription.services
                 end
               end
-            # unless empty?(subscription.services) do
-            #   map = Map.put(map, "service_id", subscription.services)
-            # end
-            unless is_nil(service_id) do
-              map = Map.put(map, "service_id", subscription.services)
-            end
-            # response = call_cell_c("charge_sub", map)
+            map =
+              if is_nil(service_id), do: map, else: Map.put(map, "service_id", service_id)
             response =
               if is_nil(service_id) do
                 call_cell_c("charge_sub", map)
               else
                 call_cell_c("charge", map)
               end
-
             # 5. Update Database, send code 200 to QQ
             if response["code"] == 200 do
               create_payment_details(msisdn)
@@ -448,19 +442,15 @@ defmodule TenbewGw.Endpoint do
         else
           # 6. Initiate the Cell C DOI Process
           if valid_msisdn_status(msisdn, "cancelled") do
-            # additional validation step requested by Kibata on Flock
             raise ValidationError, message: "invalid msisdn, subscription is cancelled", status: 503
           else
             if Subscription.exists?(msisdn) do
               response = call_cell_c("notify_sub", map)
+              message  = response["response"]
               status   = 503
-              message  =
-                if response["code"] == 200, do: response["response"], else: "subscriber notified"
-
               r_json(~m(status message)s)
             else
               raise ValidationError, message: "invalid msisdn, MSISDN not subscribed", status: 503
-              # raise ValidationError, message: "invalid msisdn, subscriber does not exist", status: 502
             end
           end
         end
@@ -676,9 +666,6 @@ defmodule TenbewGw.Endpoint do
     func |> color_info(:blue)
     msisdn = Map.get(map, "msisdn", "")
     service_id = Map.get(map, "service_id", "")
-    # unless endpoint in ["add_sub", "charge_sub", "cancel_sub", "notify_sub", "charge"] do
-    #   raise ApiError, message: "invalid endpoint, #{endpoint} not support", status: 501
-    # end
     if endpoint in ~w(add_sub charge_sub cancel_sub notify_sub charge) do
       "#{func} :: endpoint: #{endpoint}" |> color_info(:yellow)
     else
@@ -719,9 +706,11 @@ defmodule TenbewGw.Endpoint do
     # end
 
     case response do
-      resp when is_nil(resp) -> raise ApiError, message: "invalid DOI response", status: 501
+      resp when is_nil(resp) ->
+        raise ApiError, message: "invalid DOI response", status: 501
 
-      resp when is_binary(resp) -> return_cellc_error(map, "#{response}", "#{endpoint} failed, #{response}")
+      resp when is_binary(resp) ->
+        return_cellc_error(map, "#{response}", "#{endpoint} failed, #{response}")
 
       _ ->
       resp_code = if empty?(response["result"]), do: "0", else: response["result"] # remove this 0 default
@@ -975,7 +964,6 @@ defmodule TenbewGw.Endpoint do
     if is_nil(subscription) do
       create_subscription(msisdn, data)
     else
-      # TODO: update this to append any existing services
       services = data[:service_id] || subscription.services
       status = data[:status] || subscription.status
       update_attrs = %{
@@ -1423,7 +1411,7 @@ defmodule TenbewGw.Endpoint do
   end
 
   def valid_msisdn_status(msisdn, status) do
-    "valid_msisdn_status/2 :: msisdn: #{inspect(msisdn)}, status: #{inspect(status)}" |> color_info(:yellow)
+    "valid_msisdn_status/2 :: msisdn: #{inspect(msisdn)}" |> color_info(:yellow)
     case Subscription.get_status(msisdn) do
       str when str == status -> true
       _ -> false
