@@ -446,8 +446,12 @@ defmodule TenbewGw.Endpoint do
           else
             if Subscription.exists?(msisdn) do
               response = call_cell_c("notify_sub", map)
-              message  = response["response"]
-              status   = 503
+              message = if response["code"] == 200 do
+                          response["response"]
+                        else
+                          response["error"]
+                        end
+              status = 503
               r_json(~m(status message)s)
             else
               raise ValidationError, message: "invalid msisdn, MSISDN not subscribed", status: 503
