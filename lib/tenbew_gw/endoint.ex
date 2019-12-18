@@ -260,8 +260,19 @@ defmodule TenbewGw.Endpoint do
         r_json(~m(status message)s)
       else
         subscription = Subscription.get_by_msisdn(msisdn)
-        map = Map.put(map, "service_id", subscription.services)
-        response = call_cell_c("charge", map)
+        service_id = if is_nil(subscription) do
+          nil
+        else
+          if empty?(subscription.services), do: nil, else: (if subscription.services == "00", do: nil, else: subscription.services)
+        end
+
+        map = Map.put(map, "service_id", service_id || "")
+        response =
+          if is_nil(service_id) do
+            call_cell_c("charge_sub", map)
+          else
+            call_cell_c("charge", map)
+          end
 
         if response["code"] == 200 do
           create_payment_details(msisdn)
@@ -332,21 +343,18 @@ defmodule TenbewGw.Endpoint do
     end
 
     # 3. Check if the MSISDN is already Subscribed
-    # unless valid_msisdn_existance(msisdn) do
-    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-    # end
-
-    # if validate_presence(msisdn, "pending") do
-    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-    # end
-
     if Subscription.exists?(msisdn) do
-      # this should check everything besides cancelled
-      if Subscription.get_status(msisdn) == "pending" do
+      sub_status = Subscription.get_status(msisdn)
+      if sub_status == "pending" or sub_status == "active" do
         raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
       end
     end
-
+    # unless valid_msisdn_existance(msisdn) do
+    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    # end
+    # if validate_presence(msisdn, "pending") do
+    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    # end
 
     # 4. Call up Cell C DOI Service
     response = call_cell_c("add_sub", map)
