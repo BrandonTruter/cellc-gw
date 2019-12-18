@@ -400,7 +400,27 @@ defmodule TenbewGw.Endpoint do
             r_json(~m(status message)s)
           else
             # 4. Call up Cell C Charge Service
-            response = call_cell_c("charge_sub", map)
+            subscription = Subscription.get_by_msisdn(msisdn)
+            service_id =
+              if not is_nil(subscription) do
+                if not empty?(subscription.services) do
+                  if subscription.services == "00", do: nil, else: subscription.services
+                end
+              end
+            # unless empty?(subscription.services) do
+            #   map = Map.put(map, "service_id", subscription.services)
+            # end
+            unless is_nil(service_id) do
+              map = Map.put(map, "service_id", subscription.services)
+            end
+            # response = call_cell_c("charge_sub", map)
+            response =
+              if is_nil(service_id) do
+                call_cell_c("charge_sub", map)
+              else
+                call_cell_c("charge", map)
+              end
+
             # 5. Update Database, send code 200 to QQ
             if response["code"] == 200 do
               create_payment_details(msisdn)
