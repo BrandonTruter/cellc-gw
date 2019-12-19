@@ -148,13 +148,15 @@ defmodule TenbewGw.Endpoint do
             "/addsub.php" -> {__MODULE__, :add_sub, ["general"]}
             "/ChargeSub" -> {__MODULE__, :charge_sub, ["general"]}
             "/CancelSub" -> {__MODULE__, :cancel_sub, ["general"]}
+
             "/get_payment" -> {__MODULE__, :get_payment, ["general"]}
             "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
 
             "/chargesub.php" -> {__MODULE__, :charge_subscriber, ["general"]}
+            # "/sms/SendSMS" -> {__MODULE__, :send_sms, ["general"]}
+            # "/SendSMS.php" -> {__MODULE__, :send_sms_2, ["general"]}
+            "/SendSMS.php" -> {__MODULE__, :send_sms, ["general"]}
 
-            "/sms/SendSMS" -> {__MODULE__, :send_sms, ["general"]}
-            "/SendSMS.php" -> {__MODULE__, :send_sms_2, ["general"]}
             _ -> nil
           end
 
@@ -542,25 +544,47 @@ defmodule TenbewGw.Endpoint do
   # SMS integration (might remove)
 
   def send_sms(conn, opts) do
+    func = "GET /SendSMS.php"
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
-    message = Map.get(map, "message", "")
-    message_id = Map.get(map, "MessageID", "")
-    subscription = Subscription.get_by_msisdn(msisdn)
-    "GET /SendSMS :: msisdn: #{msisdn}, message: #{message}" |> color_info(:lightblue)
-    attrs = %{message: message, message_id: message_id, subscription_id: subscription.id}
+    "#{func} :: msisdn: #{msisdn}" |> color_info(:lightblue)
+    # message_id = Map.get(map, "MessageID", "")
+    # message = Map.get(map, "message", "")
     # process_sms_request(msisdn)
-    # "after process_sms_request/1" |> color_info(:yellow)
+    message_id = "001"
+    base_url = "localhost:80"
+    sms_url = "cellc/SendSMS"
+    query_params = "msisdn=#{msisdn}&MESSAGEid=#{message_id}"
+    endpoint = "#{base_url}/#{sms_url}?#{query_params}"
 
-    case Message.create_message(attrs) do
-      {:ok, message} ->
-        success = "message created #{message.id}"
-        "Message Success: #{inspect(message)}" |> color_info(:green)
-        r_json(~m(success)s)
+    case request(endpoint, :get, [], "", 30) do
+      {200, response} ->
+        "#{func} :: SMS Sent: #{inspect(response)}" |> color_info(:green)
+        subscription = Subscription.get_by_msisdn(msisdn)
+        attrs = %{
+          message: text_message,
+          message_id: message_id,
+          subscription_id: subscription.id
+        }
+        case Message.create_message(attrs) do
+          {:ok, message} ->
+            "#{func} :: Message Record Created: #{inspect(message)}" |> color_info(:green)
+            success = "message created #{message.id}"
+            r_json(~m(success)s)
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        error = changeset_errors(changeset)
-         "Message Error: #{inspect(error)}" |> color_info(:red)
+          {:error, %Ecto.Changeset{} = changeset} ->
+            error = changeset_errors(changeset)
+             "Message Error: #{inspect(error)}" |> color_info(:red)
+            r_json(~m(error)s)
+        end
+
+      {st, error} ->
+        "#{func} :: ERROR: code: #{st}, #{error}" |> color_info(:red)
+        r_json(~m(error)s)
+
+      _ ->
+      error = "failed to process SMS"
+        "#{func} :: EXCEPTION: #{error}" |> color_info(:red)
         r_json(~m(error)s)
     end
   rescue e ->
