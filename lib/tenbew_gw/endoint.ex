@@ -549,8 +549,8 @@ defmodule TenbewGw.Endpoint do
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
     "#{func} :: msisdn: #{msisdn}" |> color_info(:lightblue)
-    msg_id = Application.get_env(:tenbew_gw, :msg_gw_id) || "5"
-    query_params = "msg_template_id=#{msg_id}&destination=#{msisdn}"
+    message_id = Application.get_env(:tenbew_gw, :msg_gw_id) || "3"
+    query_params = "msg_template_id=#{message_id}&destination=#{msisdn}"
     endpoint = "#{msg_gw_url()}?#{query_params}"
 
     case request(endpoint, :get, [], "", 30) do
@@ -594,7 +594,7 @@ defmodule TenbewGw.Endpoint do
     map = req_query_params(conn)
     func |> color_info(:lightblue)
     msisdn = Map.get(map, "msisdn", "")
-    message_id = Map.get(map, "MessageID", "5")
+    message_id = Map.get(map, "MessageID", "3")
     subscription = Subscription.get_by_msisdn(msisdn)
     "#{func} msisdn: #{msisdn}" |> color_info(:yellow)
     sms_attrs = %{message: text_message, message_id: message_id, subscription_id: subscription.id}
@@ -834,8 +834,12 @@ defmodule TenbewGw.Endpoint do
       raise ValidationError, message: "invalid msisdn, MSISDN not subscribed", status: 503
     end
 
+    asr_status = String.downcase(status)
+    asr_reply = String.downcase(sms_reply)
+    successful_replied? = if asr_reply == "yes", do: true, else: false
+
     # update subscription
-    if status == "ACTIVE" do
+    if asr_status == "active" do
       sub_data = %{
         status: "active",
         service_id: service_id
@@ -843,7 +847,7 @@ defmodule TenbewGw.Endpoint do
       update_subscription_details(msisdn, sub_data)
     end
 
-    if sms_reply == "Yes" do
+    if successful_replied? do
       "#{func} :: Replied with Yes, SMS content: #{inspect(sms_sent)}" |> color_info(:yellow)
       subscription = Subscription.get_by_msisdn(msisdn)
 
@@ -867,7 +871,7 @@ defmodule TenbewGw.Endpoint do
         end
 
         # 2nd confirmation SMS sent from us
-        query_params = "msg_template_id=5&destination=#{msisdn}"
+        query_params = "msg_template_id=3&destination=#{msisdn}"
         endpoint = msg_gw_url() <> "?" <> query_params
         case request(endpoint, :get, [], "", 30) do
           {200, response} ->
