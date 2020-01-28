@@ -18,4 +18,5 @@ config :tenbew_gw, TenbewGw.Repo,
   adapter: Ecto.Adapters.MySQL,
   database: "wotf_core",
   username: "wotf_core",
-  password: "wotf_core2020"
+  password: "wotf_core2020",
+  hostname: "localhost"
