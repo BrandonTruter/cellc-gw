@@ -5,13 +5,14 @@ config :tenbew_gw, ecto_repos: [TenbewGw.Repo]
 config :tenbew_gw, base_api: "api/v1"
 
 case Mix.env() do
-  :dev -> config :tenbew_gw, redirect_url: "http://localhost:4000/"
-
-  :test -> config :tenbew_gw, redirect_url: "http://localhost:4000/"
-
-  :prod -> config :tenbew_gw, redirect_url: "http://doi.cmobile.co.za/"
-
-  _ -> config :tenbew_gw, redirect_url: "http://doi-test.cmobile.co.za/"
+  :dev ->
+    config :tenbew_gw, redirect_url: "http://localhost:4000/"
+  :test ->
+    config :tenbew_gw, redirect_url: "http://localhost:4000/"
+  :prod ->
+     config :tenbew_gw, redirect_url: "http://doi.cmobile.co.za/"
+  _ ->
+     config :tenbew_gw, redirect_url: "http://doi-test.cmobile.co.za/"
 end
 
 config :tenbew_gw, msg_gw_id: "3"
@@ -35,16 +36,5 @@ config :logger, :error,
   path: "log/error.log",
   format: "$date UTC $time [$metadata] [$level] $message\n",
   level: :error
-
-# config :tenbew_gw, TenbewGw.Repo,
-#   adapter: Ecto.Adapters.MySQL,
-#   database: "tenbew",
-#   username: "root",
-#   password: "",
-#   hostname: "localhost"
-
-# config :tenbew_gw, :charges,
-#   code: "DOI005",
-#   value: "5"
 
 import_config "#{Mix.env()}.exs"
