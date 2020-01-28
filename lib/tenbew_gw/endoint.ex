@@ -224,6 +224,8 @@ defmodule TenbewGw.Endpoint do
 
   defp config, do: Application.fetch_env(:tenbew_gw, __MODULE__)
 
+  defp msg_gw_url, do: Application.get_env(:tenbew_gw, :msg_gw_url)
+
   defp doi_api_url, do: Application.get_env(:tenbew_gw, :doi_api_url)
 
   defp redirect_url, do: Application.get_env(:tenbew_gw, :redirect_url)
@@ -547,11 +549,9 @@ defmodule TenbewGw.Endpoint do
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
     "#{func} :: msisdn: #{msisdn}" |> color_info(:lightblue)
-    message_id = "5"
-    sms_url = "/cellc/SendSMS.php"
-    base_url = "https://msg-gw.tenbew.net"
-    query_params = "msg_template_id=#{message_id}&destination=#{msisdn}"
-    endpoint = "#{base_url}/#{sms_url}?#{query_params}"
+    msg_id = Application.get_env(:tenbew_gw, :msg_gw_id) || "5"
+    query_params = "msg_template_id=#{msg_id}&destination=#{msisdn}"
+    endpoint = "#{msg_gw_url()}?#{query_params}"
 
     case request(endpoint, :get, [], "", 30) do
       {200, response} ->
@@ -628,7 +628,6 @@ defmodule TenbewGw.Endpoint do
   defp text_message do
     "Welcome to QQ-Tenbew Games. Experience our world. Thank you for subscribing. Service costs 5 Rands a day charged daily"
   end
-
 
   # Cell C DOI Methods
 
@@ -869,9 +868,7 @@ defmodule TenbewGw.Endpoint do
 
         # 2nd confirmation SMS sent from us
         query_params = "msg_template_id=5&destination=#{msisdn}"
-        base_url = "https://msg-gw.tenbew.net/cellc/SendSMS.php"
-        endpoint = base_url <> "?" <> query_params
-
+        endpoint = msg_gw_url() <> "?" <> query_params
         case request(endpoint, :get, [], "", 30) do
           {200, response} ->
             "#{func} :: Confirmation SMS Sent: #{inspect(response)}" |> color_info(:green)

@@ -14,6 +14,8 @@ case Mix.env() do
   _ -> config :tenbew_gw, redirect_url: "http://doi-test.cmobile.co.za/"
 end
 
+config :tenbew_gw, msg_gw_id: "5"
+config :tenbew_gw, msg_gw_url: "https://msg-gw.tenbew.net/cellc/SendSMS.php"
 config :tenbew_gw, doi_api_url: "http://localhost:3000/api/v1"
 config :tenbew_gw, cellc_fqdn: "https://cellc.tenbew.net"
 config :tenbew_gw, error_loggers: [:screen, :file_logger]
