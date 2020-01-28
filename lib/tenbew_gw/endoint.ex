@@ -540,21 +540,17 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-
   # SMS integration (might remove)
 
   def send_sms(conn, opts) do
-    func = "GET /SendSMS.php"
+    func = "send_sms/2"
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
     "#{func} :: msisdn: #{msisdn}" |> color_info(:lightblue)
-    # message_id = Map.get(map, "MessageID", "001")
-    # message = Map.get(map, "message", "")
-    # process_sms_request(msisdn)
-    message_id = "001"
-    sms_url = "cellc/SendSMS"
-    base_url = "http://localhost:80"
-    query_params = "msisdn=#{msisdn}&MESSAGEid=#{message_id}"
+    message_id = "5"
+    sms_url = "/cellc/SendSMS.php"
+    base_url = "https://msg-gw.tenbew.net"
+    query_params = "msg_template_id=#{message_id}&destination=#{msisdn}"
     endpoint = "#{base_url}/#{sms_url}?#{query_params}"
 
     case request(endpoint, :get, [], "", 30) do
@@ -598,11 +594,13 @@ defmodule TenbewGw.Endpoint do
     map = req_query_params(conn)
     func |> color_info(:lightblue)
     msisdn = Map.get(map, "msisdn", "")
-    message_id = Map.get(map, "MessageID", "001")
+    message_id = Map.get(map, "MessageID", "5")
     subscription = Subscription.get_by_msisdn(msisdn)
     "#{func} msisdn: #{msisdn}" |> color_info(:yellow)
     sms_attrs = %{message: text_message, message_id: message_id, subscription_id: subscription.id}
-    sms_response = request("http://localhost/cellc/SendSMS?msisdn=#{msisdn}&MESSAGEid=#{message_id}", :get, [], "", 20)
+    sms_endpoint = "https://msg-gw.tenbew.net/cellc/SendSMS.php?msg_template_id=#{message_id}&destination=#{msisdn}"
+    sms_response = request(sms_endpoint, :get, [], "", 40)
+
     "#{func} sms_response: #{inspect(sms_response)}" |> color_info(:yellow)
     process_message_creation(sms_attrs)
     # process_sms_request(msisdn)
@@ -627,37 +625,6 @@ defmodule TenbewGw.Endpoint do
     end
   end
 
-  defp process_sms_request(msisdn) do
-    func = "process_sms_request/1"
-    "#{func} :: msisdn: #{msisdn}" |> color_info(:yellow)
-    port = 13013
-    user = "foo"
-    pass = "bar"
-    system_id = ""
-    host = "156.38.208.218"
-    sms_url = "cgi-bin/sendsms"
-    base_url = "http://smsbox.host.name"
-    sms_text = text_message |> URI.encode_query
-    query_params = "username=#{user}&password=#{pass}&to=#{msisdn}&text=#{sms_text}"
-    headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
-    endpoint = "#{base_url}:#{port}/#{sms_url}?#{query_params}"
-
-    # via Kannel HTTP
-    "#{func} :: Kannel HTTP ..." |> color_info(:yellow)
-
-    case request(endpoint, :get, headers, "", 30) do
-      {200, response} -> "#{func} :: SUCCESS: #{inspect(response)}" |> color_info(:green)
-      {st, error} -> "#{func} :: ERROR: code: #{st}, #{error}" |> color_info(:red)
-      _ -> "#{func} :: EXCEPTION: failed to process SMS" |> color_info(:red)
-    end
-
-    # via SMPPEX.Session
-    # "#{func} :: SMPPEX.Session ..." |> color_info(:yellow)
-
-    # {:ok, esme} = Util.SmsSession.start_link(host, port)
-    # SMPPEX.Session.send_pdu(esme, SMPPEX.Pdu.Factory.bind_transmitter(system_id, pass))
-  end
-
   defp text_message do
     "Welcome to QQ-Tenbew Games. Experience our world. Thank you for subscribing. Service costs 5 Rands a day charged daily"
   end
@@ -667,7 +634,6 @@ defmodule TenbewGw.Endpoint do
 
   defp cellc_request(endpoint, params) do
     method = :post
-    # params = %{"msisdn" => msisdn}
     payload = Poison.encode!(params)
     base_url = doi_api_url() <> "/" <> endpoint
     headers = [{"Content-Type", "application/json"}]
@@ -704,33 +670,6 @@ defmodule TenbewGw.Endpoint do
 
     response = cellc_request(endpoint, payload)
     "#{func} :: response: #{inspect(response)}" |> color_info(:yellow)
-
-    # if is_nil(response), do: raise ApiError, message: "invalid DOI response", status: 501
-    # if is_binary(response) do
-    #   message = "#{endpoint} request failed, #{response}"
-    #   return_cellc_error(map, "#{response}", "#{message}")
-    # else
-    #   message = "#{endpoint} processed successfully, #{inspect(response)}"
-    #   message |> color_info(:green)
-    #   status = doi_status(endpoint)
-    #   msg = stringify_message(endpoint)
-    #   service_id = response["service_id"]
-    #   returned_data = %{ status: status, service_id: service_id }
-    #   response_message =
-    #     if endpoint == "cancel_sub" do
-    #       "cancelled successfully"
-    #     else
-    #       if is_nil(service_id), do: msg, else: "#{msg}, serviceID: #{service_id}"
-    #     end
-    #   %{
-    #     "code" => 200,
-    #     "error" => nil,
-    #     "status" => status,
-    #     "data" => returned_data,
-    #     "message" => "#{message}",
-    #     "response" => %{success: response_message}
-    #   }
-    # end
 
     case response do
       resp when is_nil(resp) ->
@@ -929,9 +868,9 @@ defmodule TenbewGw.Endpoint do
         end
 
         # 2nd confirmation SMS sent from us
-        query_params = "?msisdn=#{msisdn}&MESSAGEid=001"
-        base_url = "http://localhost/cellc/SendSMS"
-        endpoint = base_url <> query_params
+        query_params = "msg_template_id=5&destination=#{msisdn}"
+        base_url = "https://msg-gw.tenbew.net/cellc/SendSMS.php"
+        endpoint = base_url <> "?" <> query_params
 
         case request(endpoint, :get, [], "", 30) do
           {200, response} ->
