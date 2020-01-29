@@ -147,26 +147,23 @@ defmodule TenbewGw.Endpoint do
             "/AddSub" -> {__MODULE__, :add_sub, ["general"]}
             "/addsub.php" -> {__MODULE__, :add_sub, ["general"]}
             "/ChargeSub" -> {__MODULE__, :charge_sub, ["general"]}
-            "/CancelSub" -> {__MODULE__, :cancel_sub, ["general"]}
-
-            "/get_payment" -> {__MODULE__, :get_payment, ["general"]}
-            "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
-
             "/chargesub.php" -> {__MODULE__, :charge_subscriber, ["general"]}
-
-            "/SendSMS.php" -> {__MODULE__, :send_sms, ["general"]}
-            "/sms/SendSMS" -> {__MODULE__, :send_sms_2, ["general"]}
-
+            "/CancelSub" -> {__MODULE__, :cancel_sub, ["general"]}
+            "/cancelsub.php" -> {__MODULE__, :cancel_sub, ["general"]}
+            # "/SendSMS.php" -> {__MODULE__, :send_sms, ["general"]}
+            # "/sms/SendSMS" -> {__MODULE__, :send_sms_2, ["general"]}
+            "/get_subscription" -> {__MODULE__, :get_subscription, ["general"]}
+            "/get_payment" -> {__MODULE__, :get_payment, ["general"]}
             _ -> nil
           end
 
         "POST" ->
           case route do
+            "/update_sub_status" -> {__MODULE__, :update_sub_status, ["general"]}
             "/add_subscription" -> {__MODULE__, :add_subscription, ["general"]}
             "/add_payment" -> {__MODULE__, :add_payment, ["general"]}
-            "/callback_url" -> {__MODULE__, :update_sub_status, ["general"]}
-            "/update_sub_status" -> {__MODULE__, :update_sub_status, ["general"]}
-            "/cellc_cb_test" -> {__MODULE__, :cellc_cb_test, ["general"]}
+            # "/callback_url" -> {__MODULE__, :update_sub_status, ["general"]}
+            # "/cellc_cb_test" -> {__MODULE__, :cellc_cb_test, ["general"]}
             "/cellc_cb1" -> {__MODULE__, :cellc_cb1, ["general"]}
             _ -> nil
           end
@@ -197,15 +194,12 @@ defmodule TenbewGw.Endpoint do
           # %{}
         else
           case Poison.decode(value) do
-            {:ok, val} ->
-              val
-
+            {:ok, val} -> val
             value ->
               "Poison decode is #{inspect(value)}" |> color_info(:yellow)
               %{}
           end
         end
-
       _ ->
         %{}
     end
@@ -242,7 +236,182 @@ defmodule TenbewGw.Endpoint do
     send_resp(conn, status, "#{err_msg}")
   end
 
+  defp text_message do
+    "Welcome to QQ-Tenbew Games. Experience our world. Thank you for subscribing. Service costs 5 Rands a day charged daily"
+  end
 
+
+  # Primary Endpoints
+
+  def add_sub(conn, opts) do
+    map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    "GET /AddSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
+
+    # 1.Receive add subscriber request
+    unless valid_parameters(map) do
+      raise ValidationError, message: "invalid params, missing details", status: 500
+    end
+
+    # 2. Conduct basic MSISDN Validation
+    unless valid_msisdn_format(msisdn) do
+      raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+    end
+
+    # 3. Check if the MSISDN is already Subscribed
+    if Subscription.exists?(msisdn) do
+      sub_status = Subscription.get_status(msisdn)
+      if sub_status == "pending" or sub_status == "active" do
+        raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+      end
+    end
+    # unless valid_msisdn_existance(msisdn) do
+    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    # end
+    # if validate_presence(msisdn, "pending") do
+    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
+    # end
+
+    # 4. Call up Cell C DOI Service
+    response = call_cell_c("add_sub", map)
+
+    if response["code"] == 200 do
+      # 5. Update Database, send code 200 to QQ
+      update_subscription_details(msisdn, response["data"])
+      status = 200
+      message = response["response"]
+      r_json(~m(status message)s)
+    else
+      status = response["code"]
+      message = response["error"]
+      r_json(~m(status message)s)
+    end
+  rescue
+    e in ValidationError ->
+      "Validation Error: #{e.message}" |> color_info(:red)
+       status = e.status
+       message = e.message
+       r_json(~m(status message)s)
+    e in ApiError ->
+      "API Error: #{e.message}" |> color_info(:red)
+      status = 501
+      message = e.message
+      r_json(~m(status message)s)
+    e ->
+      "Exception: #{inspect(e)}" |> color_info(:red)
+      status = 500
+      # message = "error occured"
+      message = "exception raised"
+      r_json(~m(status message)s)
+  end
+
+  def charge_sub(conn, opts) do
+    map = req_query_params(conn)
+    msisdn = Map.get(map, "msisdn", "")
+    "GET /ChargeSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
+
+    # 1.Receive Charge subscriber request
+    if valid_parameters(map) do
+      # 2. Conduct basic MSISDN Validation
+      if validate_format(msisdn) do
+        # 3. Is MSISDN subscribed with active status
+        if validate_presence(msisdn, "active") do
+          # 7. Is MSISDN already charged for the day?
+          if validate_daily_payment(msisdn) do
+            "Validation Error: already charged" |> color_info(:red)
+            status = 200
+            message = "already charged"
+            r_json(~m(status message)s)
+          else
+            # 4. Call up Cell C Charge Service
+            subscription = Subscription.get_by_msisdn(msisdn)
+            # service_id =
+            #   if not is_nil(subscription) do
+            #     if not empty?(subscription.services) do
+            #       if subscription.services == "00", do: nil, else: subscription.services
+            #     end
+            #   end
+            service_id =
+              if is_nil(subscription) do
+                nil
+              else
+                if empty?(subscription.services) do
+                  nil
+                else
+                  if subscription.services == "00", do: nil, else: subscription.services
+                end
+              end
+
+            map = if is_nil(service_id), do: map, else: Map.put(map, "service_id", service_id)
+
+            # TODO: ony use 1 charge endpoint
+            response =
+              if is_nil(service_id) do
+                call_cell_c("charge_sub", map)
+              else
+                call_cell_c("charge", map)
+              end
+
+            # 5. Update Database, send code 200 to QQ
+            if response["code"] == 200 do
+              create_payment_details(msisdn)
+              update_subscription_details(msisdn, response["data"])
+
+              status  = 200
+              message = response["response"]
+              r_json(~m(status message)s)
+            else
+              pid = spawn_link(__MODULE__,  :charge_retries , [msisdn, map])
+              "Spawning #{inspect pid} calling charge_retries" |> color_info(:red)
+              status = 504
+              message = response["error"]
+              r_json(~m(status message)s)
+            end
+          end
+        else
+          # 6. Initiate the Cell C DOI Process
+          if valid_msisdn_status(msisdn, "cancelled") do
+            raise ValidationError, message: "invalid msisdn, subscription is cancelled", status: 503
+          else
+            if Subscription.exists?(msisdn) do
+              response = call_cell_c("notify_sub", map)
+              message = if response["code"] == 200 do
+                          response["response"]
+                        else
+                          response["error"]
+                        end
+              status = 503
+              r_json(~m(status message)s)
+            else
+              raise ValidationError, message: "invalid msisdn, MSISDN not subscribed", status: 503
+            end
+          end
+        end
+      else
+        raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
+      end
+    else
+      raise ValidationError, message: "invalid params, missing details", status: 500
+    end
+  rescue
+    e in ValidationError ->
+      "Validation Error: #{e.message}" |> color_info(:red)
+       status = e.status
+       message = e.message
+       r_json(~m(status message)s)
+    e in ApiError ->
+      "API Error: #{e.message}" |> color_info(:red)
+      status = 501
+      message = e.message
+      r_json(~m(status message)s)
+    e ->
+      "Exception: #{inspect(e)}" |> color_info(:red)
+      status = 500
+      message = "error occured"
+      r_json(~m(status message)s)
+  end
+
+  # TODO: remove this
   def charge_subscriber(conn, opts) do
     map = req_query_params(conn)
     msisdn = Map.get(map, "msisdn", "")
@@ -329,162 +498,6 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-  # Primary Endpoints
-
-  def add_sub(conn, opts) do
-    map = req_query_params(conn)
-    msisdn = Map.get(map, "msisdn", "")
-    "GET /AddSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
-
-    # 1.Receive add subscriber request
-    unless valid_parameters(map) do
-      raise ValidationError, message: "invalid params, missing details", status: 500
-    end
-
-    # 2. Conduct basic MSISDN Validation
-    unless valid_msisdn_format(msisdn) do
-      raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-    end
-
-    # 3. Check if the MSISDN is already Subscribed
-    if Subscription.exists?(msisdn) do
-      sub_status = Subscription.get_status(msisdn)
-      if sub_status == "pending" or sub_status == "active" do
-        raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-      end
-    end
-    # unless valid_msisdn_existance(msisdn) do
-    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-    # end
-    # if validate_presence(msisdn, "pending") do
-    #   raise ValidationError, message: "invalid msisdn, already subscribed", status: 502
-    # end
-
-    # 4. Call up Cell C DOI Service
-    response = call_cell_c("add_sub", map)
-
-    if response["code"] == 200 do
-      # 5. Update Database, send code 200 to QQ
-      update_subscription_details(msisdn, response["data"])
-      status = 200
-      message = response["response"]
-      r_json(~m(status message)s)
-    else
-      status = response["code"]
-      message = response["error"]
-      r_json(~m(status message)s)
-    end
-  rescue
-    e in ValidationError ->
-      "Validation Error: #{e.message}" |> color_info(:red)
-       status = e.status
-       message = e.message
-       r_json(~m(status message)s)
-    e in ApiError ->
-      "API Error: #{e.message}" |> color_info(:red)
-      status = 501
-      message = e.message
-      r_json(~m(status message)s)
-    e ->
-      "Exception: #{inspect(e)}" |> color_info(:red)
-      status = 500
-      # message = "error occured"
-      message = "exception raised"
-      r_json(~m(status message)s)
-  end
-
-  def charge_sub(conn, opts) do
-    map = req_query_params(conn)
-    msisdn = Map.get(map, "msisdn", "")
-    "GET /ChargeSub :: msisdn: #{msisdn}" |> color_info(:lightblue)
-
-    # 1.Receive Charge subscriber request
-    if valid_parameters(map) do
-      # 2. Conduct basic MSISDN Validation
-      if validate_format(msisdn) do
-        # 3. Is MSISDN subscribed with active status
-        if validate_presence(msisdn, "active") do
-          # 7. Is MSISDN already charged for the day?
-          if validate_daily_payment(msisdn) do
-            "Validation Error: already charged" |> color_info(:red)
-            status = 200
-            message = "already charged"
-            r_json(~m(status message)s)
-          else
-            # 4. Call up Cell C Charge Service
-            subscription = Subscription.get_by_msisdn(msisdn)
-            service_id =
-              if not is_nil(subscription) do
-                if not empty?(subscription.services) do
-                  if subscription.services == "00", do: nil, else: subscription.services
-                end
-              end
-            map =
-              if is_nil(service_id), do: map, else: Map.put(map, "service_id", service_id)
-            response =
-              if is_nil(service_id) do
-                call_cell_c("charge_sub", map)
-              else
-                call_cell_c("charge", map)
-              end
-            # 5. Update Database, send code 200 to QQ
-            if response["code"] == 200 do
-              create_payment_details(msisdn)
-              update_subscription_details(msisdn, response["data"])
-
-              status  = 200
-              message = response["response"]
-              r_json(~m(status message)s)
-            else
-              pid = spawn_link(__MODULE__,  :charge_retries , [msisdn, map])
-              "Spawning #{inspect pid} calling charge_retries" |> color_info(:red)
-              status = 504
-              message = response["error"]
-              r_json(~m(status message)s)
-            end
-          end
-        else
-          # 6. Initiate the Cell C DOI Process
-          if valid_msisdn_status(msisdn, "cancelled") do
-            raise ValidationError, message: "invalid msisdn, subscription is cancelled", status: 503
-          else
-            if Subscription.exists?(msisdn) do
-              response = call_cell_c("notify_sub", map)
-              message = if response["code"] == 200 do
-                          response["response"]
-                        else
-                          response["error"]
-                        end
-              status = 503
-              r_json(~m(status message)s)
-            else
-              raise ValidationError, message: "invalid msisdn, MSISDN not subscribed", status: 503
-            end
-          end
-        end
-      else
-        raise ValidationError, message: "invalid msisdn, incorrect format", status: 501
-      end
-    else
-      raise ValidationError, message: "invalid params, missing details", status: 500
-    end
-  rescue
-    e in ValidationError ->
-      "Validation Error: #{e.message}" |> color_info(:red)
-       status = e.status
-       message = e.message
-       r_json(~m(status message)s)
-    e in ApiError ->
-      "API Error: #{e.message}" |> color_info(:red)
-      status = 501
-      message = e.message
-      r_json(~m(status message)s)
-    e ->
-      "Exception: #{inspect(e)}" |> color_info(:red)
-      status = 500
-      message = "error occured"
-      r_json(~m(status message)s)
-  end
 
   def cancel_sub(conn, opts) do
     map = req_query_params(conn)
@@ -542,92 +555,6 @@ defmodule TenbewGw.Endpoint do
       r_json(~m(status message)s)
   end
 
-  # SMS integration (might remove)
-
-  def send_sms(conn, opts) do
-    func = "send_sms/2"
-    map = req_query_params(conn)
-    msisdn = Map.get(map, "msisdn", "")
-    "#{func} :: msisdn: #{msisdn}" |> color_info(:lightblue)
-    message_id = Application.get_env(:tenbew_gw, :msg_gw_id) || "3"
-    query_params = "msg_template_id=#{message_id}&destination=#{msisdn}"
-    endpoint = "#{msg_gw_url()}?#{query_params}"
-
-    case request(endpoint, :get, [], "", 30) do
-      {200, response} ->
-        "#{func} :: SMS Sent: #{inspect(response)}" |> color_info(:green)
-        subscription = Subscription.get_by_msisdn(msisdn)
-        attrs = %{
-          message: text_message,
-          message_id: message_id,
-          subscription_id: subscription.id
-        }
-        case Message.create_message(attrs) do
-          {:ok, message} ->
-            "#{func} :: Message Record Created: #{inspect(message)}" |> color_info(:green)
-            success = "message created #{message.id}"
-            r_json(~m(success)s)
-
-          {:error, %Ecto.Changeset{} = changeset} ->
-            error = changeset_errors(changeset)
-             "Message Error: #{inspect(error)}" |> color_info(:red)
-            r_json(~m(error)s)
-        end
-
-      {st, error} ->
-        "#{func} :: ERROR: code: #{st}, #{error}" |> color_info(:red)
-        r_json(~m(error)s)
-
-      _ ->
-      error = "failed to process SMS"
-        "#{func} :: EXCEPTION: #{error}" |> color_info(:red)
-        r_json(~m(error)s)
-    end
-  rescue e ->
-    error = "#{inspect(e)}"
-    "GET /SendSMS :: Exception: #{error}" |> color_info(:red)
-    r_json(~m(error)s)
-  end
-
-  def send_sms_2(conn, opts) do
-    func = "GET /sms/SendSMS ::"
-    map = req_query_params(conn)
-    func |> color_info(:lightblue)
-    msisdn = Map.get(map, "msisdn", "")
-    message_id = Map.get(map, "MessageID", "3")
-    subscription = Subscription.get_by_msisdn(msisdn)
-    "#{func} msisdn: #{msisdn}" |> color_info(:yellow)
-    sms_attrs = %{message: text_message, message_id: message_id, subscription_id: subscription.id}
-    sms_endpoint = "https://msg-gw.tenbew.net/cellc/SendSMS.php?msg_template_id=#{message_id}&destination=#{msisdn}"
-    sms_response = request(sms_endpoint, :get, [], "", 40)
-
-    "#{func} sms_response: #{inspect(sms_response)}" |> color_info(:yellow)
-    process_message_creation(sms_attrs)
-    # process_sms_request(msisdn)
-    response = "SMS processed"
-    r_json(~m(response)s)
-  rescue e ->
-    error = "#{inspect(e)}"
-    "GET /SendSMS :: Exception: #{error}" |> color_info(:red)
-    r_json(~m(error)s)
-  end
-
-  defp process_message_creation(attrs) do
-    func = "process_message_creation/1 ::"
-    "#{func} #{inspect(attrs)} " |> color_info(:yellow)
-
-    case Message.create_message(attrs) do
-      {:ok, message} ->
-        "#{func} Success: #{inspect(message)}" |> color_info(:green)
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-         "#{func} Error: #{inspect(changeset_errors(changeset))}" |> color_info(:red)
-    end
-  end
-
-  defp text_message do
-    "Welcome to QQ-Tenbew Games. Experience our world. Thank you for subscribing. Service costs 5 Rands a day charged daily"
-  end
 
   # Cell C DOI Methods
 
@@ -678,7 +605,9 @@ defmodule TenbewGw.Endpoint do
         return_cellc_error(map, "#{response}", "#{endpoint} failed, #{response}")
 
       _ ->
-      resp_code = if empty?(response["result"]), do: "0", else: response["result"] # remove this 0 default
+
+      # TODO: remove this 0 default
+      resp_code = if empty?(response["result"]), do: "0", else: response["result"]
       errors = doi_error_codes(resp_code, endpoint)
 
       if is_nil(errors) do
@@ -928,28 +857,6 @@ defmodule TenbewGw.Endpoint do
       |> send_resp(400, "failed to process callback request")
   end
 
-  def cellc_cb_test(conn, opts) do
-    func = "cellc_cb_test/2"
-    func |> color_info(:lightblue)
-    "#{func} :: conn: #{inspect(conn)}" |> color_info(:yellow)
-
-    map = req_body_map(conn)
-    "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)
-
-    xml_str = Map.get(map, :xml, nil)
-
-    asr_xml_response = process_asr(xml_str)
-
-    conn
-    |> put_resp_content_type("text/xml")
-    |> send_resp(200, asr_xml_response)
-  rescue e ->
-    "cellc_cb_test/2 exception : #{inspect e}" |> color_info(:red)
-    conn
-    |> put_resp_content_type("text/plain")
-    |> send_resp(400, "failed to process callback test")
-  end
-
   # Database Methods
 
   def update_subscription_details(msisdn, data) do
@@ -978,6 +885,7 @@ defmodule TenbewGw.Endpoint do
     unless is_nil(subscription) do
       payment_date = NaiveDateTime.utc_now
       qq_charges = Application.get_env(:tenbew_gw, :charges)
+      # TODO: maybe swap these around
       service = qq_charges[:code] || subscription.services
       charge = qq_charges[:value]
       amount =
@@ -1111,6 +1019,8 @@ defmodule TenbewGw.Endpoint do
   rescue e ->
     "update_status/2 exception : #{inspect e}" |> color_info(:red)
   end
+
+  # Secondary Endpoints
 
   def add_subscription(conn, _opts) do
     map = req_body_map(conn)
@@ -1424,7 +1334,7 @@ defmodule TenbewGw.Endpoint do
       status: subscription.status,
       services: subscription.services,
       date: subscription.updated_at || subscription.inserted_at,
-      is_validated: (if subscription.validated == true, do: "Yes", else: "No")
+      is_validated: (if subscription.validated == true, do: "yes", else: "no")
     }
   end
 
@@ -1435,7 +1345,7 @@ defmodule TenbewGw.Endpoint do
       amount: payment.amount,
       status: payment.status,
       payment_date: payment.paid_at || payment.inserted_at,
-      is_paid: (if payment.paid == true, do: "Yes", else: "Not Yet")
+      is_paid: (if payment.paid == true, do: "yes", else: "not yet")
     }
   end
 
@@ -1495,6 +1405,117 @@ defmodule TenbewGw.Endpoint do
       502 -> "MSISDN Already Subscribed"
     end
   end
+
+
+  # CellC integration methods
+
+  # def cellc_cb_test(conn, opts) do
+  #   func = "cellc_cb_test/2"
+  #   func |> color_info(:lightblue)
+  #   "#{func} :: conn: #{inspect(conn)}" |> color_info(:yellow)
+  #
+  #   map = req_body_map(conn)
+  #   "#{func} :: map: #{inspect(map)}" |> color_info(:yellow)
+  #
+  #   xml_str = Map.get(map, :xml, nil)
+  #
+  #   asr_xml_response = process_asr(xml_str)
+  #
+  #   conn
+  #   |> put_resp_content_type("text/xml")
+  #   |> send_resp(200, asr_xml_response)
+  # rescue e ->
+  #   "cellc_cb_test/2 exception : #{inspect e}" |> color_info(:red)
+  #   conn
+  #   |> put_resp_content_type("text/plain")
+  #   |> send_resp(400, "failed to process callback test")
+  # end
+
+  # SMS integration methods
+
+  # def send_sms(conn, opts) do
+  #   func = "send_sms/2"
+  #   map = req_query_params(conn)
+  #   msisdn = Map.get(map, "msisdn", "")
+  #   "#{func} :: msisdn: #{msisdn}" |> color_info(:lightblue)
+  #   message_id = Application.get_env(:tenbew_gw, :msg_gw_id) || "3"
+  #   query_params = "msg_template_id=#{message_id}&destination=#{msisdn}"
+  #   endpoint = "#{msg_gw_url()}?#{query_params}"
+  #
+  #   case request(endpoint, :get, [], "", 30) do
+  #     {200, response} ->
+  #       "#{func} :: SMS Sent: #{inspect(response)}" |> color_info(:green)
+  #       subscription = Subscription.get_by_msisdn(msisdn)
+  #       attrs = %{
+  #         message: text_message,
+  #         message_id: message_id,
+  #         subscription_id: subscription.id
+  #       }
+  #       case Message.create_message(attrs) do
+  #         {:ok, message} ->
+  #           "#{func} :: Message Record Created: #{inspect(message)}" |> color_info(:green)
+  #           success = "message created #{message.id}"
+  #           r_json(~m(success)s)
+  #
+  #         {:error, %Ecto.Changeset{} = changeset} ->
+  #           error = changeset_errors(changeset)
+  #            "Message Error: #{inspect(error)}" |> color_info(:red)
+  #           r_json(~m(error)s)
+  #       end
+  #
+  #     {st, error} ->
+  #       "#{func} :: ERROR: code: #{st}, #{error}" |> color_info(:red)
+  #       r_json(~m(error)s)
+  #
+  #     _ ->
+  #     error = "failed to process SMS"
+  #       "#{func} :: EXCEPTION: #{error}" |> color_info(:red)
+  #       r_json(~m(error)s)
+  #   end
+  # rescue e ->
+  #   error = "#{inspect(e)}"
+  #   "GET /SendSMS :: Exception: #{error}" |> color_info(:red)
+  #   r_json(~m(error)s)
+  # end
+
+  # def send_sms_2(conn, opts) do
+  #   func = "GET /sms/SendSMS ::"
+  #   map = req_query_params(conn)
+  #   func |> color_info(:lightblue)
+  #   msisdn = Map.get(map, "msisdn", "")
+  #   message_id = Map.get(map, "MessageID", "3")
+  #   subscription = Subscription.get_by_msisdn(msisdn)
+  #   "#{func} msisdn: #{msisdn}" |> color_info(:yellow)
+  #   sms_attrs = %{message: text_message, message_id: message_id, subscription_id: subscription.id}
+  #   sms_endpoint = "https://msg-gw.tenbew.net/cellc/SendSMS.php?msg_template_id=#{message_id}&destination=#{msisdn}"
+  #   sms_response = request(sms_endpoint, :get, [], "", 40)
+  #
+  #   "#{func} sms_response: #{inspect(sms_response)}" |> color_info(:yellow)
+  #   process_message_creation(sms_attrs)
+  #   # process_sms_request(msisdn)
+  #   response = "SMS processed"
+  #   r_json(~m(response)s)
+  # rescue e ->
+  #   error = "#{inspect(e)}"
+  #   "GET /SendSMS :: Exception: #{error}" |> color_info(:red)
+  #   r_json(~m(error)s)
+  # end
+
+  # defp process_message_creation(attrs) do
+  #   func = "process_message_creation/1 ::"
+  #   "#{func} #{inspect(attrs)} " |> color_info(:yellow)
+  #
+  #   case Message.create_message(attrs) do
+  #     {:ok, message} ->
+  #       "#{func} Success: #{inspect(message)}" |> color_info(:green)
+  #
+  #     {:error, %Ecto.Changeset{} = changeset} ->
+  #        "#{func} Error: #{inspect(changeset_errors(changeset))}" |> color_info(:red)
+  #   end
+  # end
+
+
+
 
   # if required, add logic for creating subscriptions on Rails App
 
