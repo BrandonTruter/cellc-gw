@@ -505,9 +505,7 @@ defmodule TenbewGw.Endpoint do
         return_cellc_error(map, "#{response}", "#{endpoint} failed, #{response}")
 
       _ ->
-
-      # TODO: remove this 0 default
-      resp_code = if empty?(response["result"]), do: "0", else: response["result"]
+      resp_code = if empty?(response["result"]), do: "999", else: response["result"]
       errors = doi_error_codes(resp_code, endpoint)
 
       if is_nil(errors) do
