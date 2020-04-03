@@ -783,8 +783,7 @@ defmodule TenbewGw.Endpoint do
     unless is_nil(subscription) do
       payment_date = NaiveDateTime.utc_now
       qq_charges = Application.get_env(:tenbew_gw, :charges)
-      # TODO: maybe swap these around
-      service = qq_charges[:code] || subscription.services
+      service = subscription.services || qq_charges[:code]
       charge = qq_charges[:value]
       amount =
         case charge do
